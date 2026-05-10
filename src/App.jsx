@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import BackgroundEffects from './components/game/BackgroundEffects';
 import { RefreshCw } from 'lucide-react';
@@ -8,8 +8,10 @@ const SplashScreen = lazy(() => import('./pages/SplashScreen'));
 const JoinGame = lazy(() => import('./pages/JoinGame'));
 const GameScreen = lazy(() => import('./pages/GameScreen'));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const ReceptionScanner = lazy(() => import('./pages/ReceptionScanner'));
 
 function AppContent() {
+  const location = useLocation();
   const [user, setUser] = useState(() => {
     const saved = sessionStorage.getItem('liar_user');
     return saved ? JSON.parse(saved) : null;
@@ -18,11 +20,40 @@ function AppContent() {
   const [isDemo, setIsDemo] = useState(() => sessionStorage.getItem('liar_is_demo') === 'true');
 
   const navigate = useNavigate();
+  const didRestoreRef = useRef(false);
 
   useEffect(() => {
     if (user) sessionStorage.setItem('liar_user', JSON.stringify(user));
     sessionStorage.setItem('liar_is_demo', isDemo ? 'true' : 'false');
   }, [user, isDemo]);
+
+  useEffect(() => {
+    sessionStorage.setItem('liar_last_route', location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (didRestoreRef.current) return;
+    didRestoreRef.current = true;
+
+    const savedRoute = sessionStorage.getItem('liar_last_route');
+    const isEntryRoute = location.pathname === '/' || location.pathname === '/join';
+
+    if (!isEntryRoute) return;
+
+    if (user?.isHost) {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
+    if (user?.name) {
+      navigate('/game', { replace: true });
+      return;
+    }
+
+    if (savedRoute && savedRoute !== '/' && savedRoute !== '/join') {
+      navigate(savedRoute, { replace: true });
+    }
+  }, [location.pathname, navigate, user]);
 
   const handleEnter = () => navigate('/join');
 
@@ -56,6 +87,7 @@ function AppContent() {
             element={<GameScreen currentUser={user} isDemo={isDemo} />}
           />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/scanner-reception" element={<ReceptionScanner />} />
         </Routes>
       </Suspense>
     </AnimatePresence>

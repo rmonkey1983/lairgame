@@ -15,13 +15,34 @@ const generateDemoIdentity = () => {
   };
 };
 
+const JOIN_STATE_KEY = 'liar_join_state';
+
+const readJoinState = () => {
+  try {
+    const raw = sessionStorage.getItem(JOIN_STATE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
 const JoinGame = ({ onJoin, onDemo, setIsDemo }) => {
+  const savedJoinState = readJoinState();
   const { session, registerPlayer } = useSupabaseSession();
-  const [step, setStep] = useState('ticket'); // ticket, waiting, table, success
-  const [ticketId, setTicketId] = useState('');
-  const [participant, setParticipant] = useState(null);
+  const [step, setStep] = useState(savedJoinState.step || 'ticket'); // ticket, waiting, table, success
+  const [ticketId, setTicketId] = useState(savedJoinState.ticketId || '');
+  const [participant, setParticipant] = useState(savedJoinState.participant || null);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const joinState = {
+      step,
+      ticketId,
+      participant,
+    };
+    sessionStorage.setItem(JOIN_STATE_KEY, JSON.stringify(joinState));
+  }, [step, ticketId, participant]);
 
   const handleFinalJoin = useCallback(async (pData) => {
     if (!pData?.name) return;
@@ -30,6 +51,7 @@ const JoinGame = ({ onJoin, onDemo, setIsDemo }) => {
       id: Date.now() + 100, // ID reale
       tableCode: pData.table_code 
     });
+    sessionStorage.removeItem(JOIN_STATE_KEY);
     onJoin(registered || { name: pData.name, tableCode: pData.table_code });
   }, [registerPlayer, onJoin]);
 

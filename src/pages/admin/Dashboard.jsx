@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useGameSession } from '@/hooks/useGameSession';
@@ -6,7 +7,7 @@ import BentoCard from '@/components/game/BentoCard';
 import PowerButton from '@/components/game/PowerButton';
 import StyledInput from '@/components/game/StyledInput';
 import { 
-  Settings, Users, ShieldCheck, Trophy 
+  Settings, Users, ShieldCheck, Trophy, Send, Globe, MapPinned, User, Wand2, ScanLine
 } from 'lucide-react';
 
 const PRESET_STORIES = [
@@ -15,6 +16,33 @@ const PRESET_STORIES = [
   "Eri bloccato in un ascensore con tre sconosciuti. Uno di loro sembrava nascondere qualcosa.",
   "Eri a una festa di gala quando le luci si sono spente. Al ritorno della corrente, un quadro era sparito."
 ];
+
+const MESSAGE_TEMPLATES = {
+  waiting: [
+    'Restate pronti, la sessione sta per iniziare.',
+    'Controllate il tavolo e preparatevi alla prima fase.',
+  ],
+  liar_selection: [
+    'Silenzio al tavolo: selezione in corso.',
+    'Osservate attentamente i comportamenti degli altri.',
+  ],
+  accomplice_selection: [
+    'Nuova scelta in corso, mantenete la concentrazione.',
+    'State pronti: il gioco cambia rapidamente.',
+  ],
+  mission: [
+    'Tempo missione attivo: collaborate senza dare indizi sospetti.',
+    'Focus massimo: ogni dettaglio puo fare la differenza.',
+  ],
+  vote: [
+    'Fase voto aperta: votate subito il sospetto principale.',
+    'Votate ora, il tempo sta per scadere.',
+  ],
+  result: [
+    'Risultati in arrivo: restate connessi.',
+    'Fine round: preparatevi al prossimo giro.',
+  ],
+};
 
 const AdminDashboard = () => {
   const { session, updateSession } = useGameSession(); 
@@ -25,6 +53,8 @@ const AdminDashboard = () => {
   const [validationData, setValidationData] = useState({ name: '', table: 'BBL-QR-7' });
   const [newStory, setNewStory] = useState('');
   const [newTimer, setNewTimer] = useState(60);
+  const [hint, setHint] = useState('');
+  const [hintTarget, setHintTarget] = useState('all');
 
   const fetchStats = useCallback(async () => {
     try {
@@ -105,6 +135,50 @@ const AdminDashboard = () => {
     }
   };
 
+  const tableCode = session.table_code || 'BBL-QR-7';
+  const playerOptions = (session.players || []).filter((p) => p?.id && p?.name);
+
+  const generateHint = () => {
+    const phase = session.phase || 'waiting';
+    const templates = MESSAGE_TEMPLATES[phase] || MESSAGE_TEMPLATES.waiting;
+    const randomMessage = templates[Math.floor(Math.random() * templates.length)];
+    setHint(randomMessage);
+  };
+
+  const handleSendHint = () => {
+    const cleanHint = hint.trim();
+    if (!cleanHint) return;
+
+    let targetType = 'all';
+    let targetId = null;
+    let targetName = 'Tutti';
+
+    if (hintTarget === 'table') {
+      targetType = 'table';
+      targetId = tableCode;
+      targetName = `Tavolo ${tableCode}`;
+    } else if (hintTarget.startsWith('player_')) {
+      targetType = 'player';
+      targetId = parseInt(hintTarget.replace('player_', ''), 10);
+      const targetPlayer = playerOptions.find((p) => p.id === targetId);
+      targetName = targetPlayer?.name || `Giocatore ${targetId}`;
+    }
+
+    updateSession({
+      adminHint: { text: cleanHint, targetType, targetId },
+      logs: [
+        { time: new Date().toLocaleTimeString(), msg: `Messaggio a [${targetName}]: ${cleanHint}` },
+        ...(session.logs || []),
+      ].slice(0, 15),
+    });
+
+    setHint('');
+  };
+
+  const clearHint = () => {
+    updateSession({ adminHint: null });
+  };
+
   const phases = [
     { id: 'waiting', label: 'LOBBY (QR SCAN)', color: '#3b82f6' },
     { id: 'liar_selection', label: 'SCELTA BUGIARDO', color: '#ff003c' },
@@ -139,6 +213,14 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <Link
+            aria-label="Apri pagina scanner reception"
+            to="/scanner-reception"
+            className="px-6 py-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-[0.6rem] font-bold text-blue-300 hover:text-blue-200 transition-all inline-flex items-center gap-2 uppercase tracking-widest"
+          >
+            <ScanLine size={12} />
+            Scanner Reception
+          </Link>
           <div className="flex p-1 bg-white/5 border border-white/10 rounded-2xl">
             <button aria-label="Apri controllo game" onClick={() => setActiveTab('game')} className={`px-6 py-2 rounded-xl text-[0.6rem] font-bold uppercase transition-all ${activeTab === 'game' ? 'bg-[#ff003c]' : 'text-white/40'}`}>Controllo Game</button>
             <button aria-label="Apri reception" onClick={() => setActiveTab('reception')} className={`px-6 py-2 rounded-xl text-[0.6rem] font-bold uppercase transition-all ${activeTab === 'reception' ? 'bg-[#ff003c]' : 'text-white/40'}`}>Reception</button>
@@ -201,6 +283,91 @@ const AdminDashboard = () => {
             </div>
 
             <div className="lg:col-span-4 space-y-8">
+              <BentoCard glowColor="#f59e0b">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold uppercase italic text-amber-400">Messaggi Regia</h3>
+                  <button
+                    aria-label="Genera messaggio automatico"
+                    onClick={generateHint}
+                    className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition-all"
+                  >
+                    <Wand2 size={14} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      aria-label="Messaggio a tutti"
+                      onClick={() => setHintTarget('all')}
+                      className={`py-2 rounded-xl border text-[0.55rem] font-black uppercase tracking-widest transition-all ${hintTarget === 'all' ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-white/5 border-white/10 text-white/50'}`}
+                    >
+                      <span className="inline-flex items-center gap-1"><Globe size={11} /> Tutti</span>
+                    </button>
+                    <button
+                      aria-label="Messaggio al tavolo"
+                      onClick={() => setHintTarget('table')}
+                      className={`py-2 rounded-xl border text-[0.55rem] font-black uppercase tracking-widest transition-all ${hintTarget === 'table' ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-white/5 border-white/10 text-white/50'}`}
+                    >
+                      <span className="inline-flex items-center gap-1"><MapPinned size={11} /> Tavolo</span>
+                    </button>
+                    <button
+                      aria-label="Messaggio a singolo utente"
+                      onClick={() => setHintTarget(playerOptions[0] ? `player_${playerOptions[0].id}` : 'all')}
+                      className={`py-2 rounded-xl border text-[0.55rem] font-black uppercase tracking-widest transition-all ${hintTarget.startsWith('player_') ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-white/5 border-white/10 text-white/50'}`}
+                    >
+                      <span className="inline-flex items-center gap-1"><User size={11} /> Singolo</span>
+                    </button>
+                  </div>
+
+                  {hintTarget.startsWith('player_') && (
+                    <select
+                      aria-label="Seleziona giocatore destinatario"
+                      value={hintTarget}
+                      onChange={(e) => setHintTarget(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400/50"
+                    >
+                      {playerOptions.map((p) => (
+                        <option key={p.id} value={`player_${p.id}`} className="bg-[#0a0a0f]">
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <textarea
+                    value={hint}
+                    onChange={(e) => setHint(e.target.value)}
+                    placeholder="Scrivi un messaggio della regia..."
+                    className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-400/50"
+                  />
+
+                  <div className="flex gap-2">
+                    <PowerButton
+                      ariaLabel="Invia messaggio regia"
+                      onClick={handleSendHint}
+                      glowColor="#f59e0b"
+                      className="w-full !py-3 !text-[0.6rem]"
+                    >
+                      <Send size={14} /> INVIA
+                    </PowerButton>
+                    <button
+                      aria-label="Cancella messaggio regia attivo"
+                      onClick={clearHint}
+                      className="px-4 rounded-2xl bg-white/5 border border-white/10 text-[0.55rem] font-black uppercase text-white/50 hover:text-white transition-all"
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  {session.adminHint?.text && (
+                    <p className="text-[0.55rem] text-amber-200/80 uppercase tracking-widest">
+                      Attivo: "{session.adminHint.text}"
+                    </p>
+                  )}
+                </div>
+              </BentoCard>
+
               <BentoCard>
                 <h3 className="text-lg font-bold uppercase italic mb-8 text-[#ff003c]">Controllo Fasi</h3>
                 <div className="space-y-2">
