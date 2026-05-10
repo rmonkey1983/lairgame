@@ -135,11 +135,11 @@ const AdminDashboard = () => {
     }
   };
 
-  const tableCode = session.table_code || 'BBL-QR-7';
-  const playerOptions = (session.players || []).filter((p) => p?.id && p?.name);
+  const tableCode = session?.table_code || 'BBL-QR-7';
+  const playerOptions = (session?.players || []).filter((p) => p?.id && p?.name);
 
   const generateHint = () => {
-    const phase = session.phase || 'waiting';
+    const phase = session?.phase || 'waiting';
     const templates = MESSAGE_TEMPLATES[phase] || MESSAGE_TEMPLATES.waiting;
     const randomMessage = templates[Math.floor(Math.random() * templates.length)];
     setHint(randomMessage);
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
       adminHint: { text: cleanHint, targetType, targetId },
       logs: [
         { time: new Date().toLocaleTimeString(), msg: `Messaggio a [${targetName}]: ${cleanHint}` },
-        ...(session.logs || []),
+        ...(session?.logs || []),
       ].slice(0, 15),
     });
 
