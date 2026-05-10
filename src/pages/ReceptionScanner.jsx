@@ -38,6 +38,18 @@ const parseTicketPayload = (raw) => {
   return { ticketId: value };
 };
 
+const normalizeTicketId = (ticketId = '') => {
+  if (!ticketId) return '';
+
+  // Supported patterns:
+  // - TICKET:<uuid>|Buyer Name
+  // - TICKET:<uuid>
+  // - <uuid>
+  const compact = ticketId.trim();
+  const withoutPrefix = compact.startsWith('TICKET:') ? compact.slice(7) : compact;
+  return withoutPrefix.split('|')[0].trim();
+};
+
 const getBarcodeDetector = () => {
   if (typeof window === 'undefined' || typeof window.BarcodeDetector === 'undefined') {
     return null;
@@ -136,7 +148,8 @@ export default function ReceptionScanner() {
 
   const confirmTicketToReception = useCallback(async (rawPayload) => {
     const parsed = parseTicketPayload(rawPayload);
-    const ticketId = parsed.ticketId?.trim();
+    const incomingTicket = parsed.ticketId?.trim();
+    const ticketId = normalizeTicketId(incomingTicket);
 
     if (!ticketId) {
       setStatus({ type: 'error', message: 'QR non valido: ticket_id mancante.' });
@@ -147,36 +160,63 @@ export default function ReceptionScanner() {
     setStatus({ type: 'loading', message: `Conferma ticket ${ticketId} in corso...` });
 
     try {
-      const { data: existing, error: selectError } = await supabase
+      const { data: ticketRow, error: ticketError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketId)
+        .maybeSingle();
+
+      if (ticketError) throw ticketError;
+      if (!ticketRow) {
+        setStatus({ type: 'error', message: `Ticket ${ticketId} non trovato in tickets.` });
+        return;
+      }
+
+      const participantName = parsed.name || ticketRow.buyer_name || `Giocatore ${ticketId.slice(-4).toUpperCase()}`;
+      const participantTable = parsed.tableCode || DEFAULT_TABLE_CODE;
+
+      const { data: existingParticipant, error: existingParticipantError } = await supabase
         .from('participants')
         .select('*')
         .eq('ticket_id', ticketId)
         .maybeSingle();
 
-      if (selectError) throw selectError;
+      if (existingParticipantError) throw existingParticipantError;
 
-      if (!existing) {
-        setStatus({
-          type: 'error',
-          message: `Ticket ${ticketId} non trovato nel database prenotazioni. Verifica che sia stato acquistato dal sito.`,
-        });
-        return;
+      if (!existingParticipant) {
+        const { error: createParticipantError } = await supabase
+          .from('participants')
+          .insert([
+            {
+              ticket_id: ticketId,
+              name: participantName,
+              table_code: participantTable,
+              status: 'validated',
+            },
+          ]);
+
+        if (createParticipantError) throw createParticipantError;
+      } else {
+        const { error: updateParticipantError } = await supabase
+          .from('participants')
+          .update({
+            name: existingParticipant.name || participantName,
+            table_code: existingParticipant.table_code || participantTable,
+            status: 'validated',
+          })
+          .eq('ticket_id', ticketId);
+
+        if (updateParticipantError) throw updateParticipantError;
       }
 
-      const updatePayload = { status: 'validated' };
-      if (!existing.name && parsed.name) updatePayload.name = parsed.name;
-      if (!existing.table_code && parsed.tableCode) updatePayload.table_code = parsed.tableCode;
+      const { error: markUsedError } = await supabase
+        .from('tickets')
+        .update({ is_used: true })
+        .eq('id', ticketId);
 
-      const { error: updateError } = await supabase
-        .from('participants')
-        .update(updatePayload)
-        .eq('ticket_id', ticketId);
+      if (markUsedError) throw markUsedError;
 
-      if (updateError) throw updateError;
-
-      const resolvedName = existing.name || parsed.name || '';
-      const resolvedTableCode = existing.table_code || parsed.tableCode || DEFAULT_TABLE_CODE;
-      await registerPlayerProfile({ ticketId, name: resolvedName, tableCode: resolvedTableCode });
+      await registerPlayerProfile({ ticketId, name: participantName, tableCode: participantTable });
 
       setStatus({ type: 'success', message: `Ticket ${ticketId} validato e profilo giocatore creato automaticamente.` });
       setManualInput('');
