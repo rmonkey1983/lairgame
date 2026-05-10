@@ -46,6 +46,69 @@ const getBarcodeDetector = () => {
   return new window.BarcodeDetector({ formats: ['qr_code'] });
 };
 
+const registerPlayerProfile = async ({ ticketId, name, tableCode }) => {
+  const safeTableCode = tableCode || DEFAULT_TABLE_CODE;
+  const safeName = (name || '').trim() || `Giocatore ${ticketId.slice(-4).toUpperCase()}`;
+
+  const { data: existingSession, error: sessionError } = await supabase
+    .from('game_sessions')
+    .select('players, logs')
+    .eq('table_code', safeTableCode)
+    .maybeSingle();
+
+  if (sessionError) throw sessionError;
+
+  const currentPlayers = existingSession?.players || [];
+  const alreadyInSession = currentPlayers.some(
+    (p) => p?.ticket_id === ticketId || p?.name?.toLowerCase() === safeName.toLowerCase()
+  );
+
+  if (alreadyInSession) return;
+
+  const newPlayer = {
+    id: Date.now(),
+    name: safeName,
+    role: 'innocente',
+    ticket_id: ticketId,
+    tableCode: safeTableCode,
+  };
+
+  const updatedPlayers = [...currentPlayers, newPlayer];
+  const updatedLogs = [
+    { time: new Date().toLocaleTimeString(), msg: `${safeName} confermato da scanner reception` },
+    ...(existingSession?.logs || []),
+  ].slice(0, 15);
+
+  if (!existingSession) {
+    const { error: createSessionError } = await supabase
+      .from('game_sessions')
+      .insert([
+        {
+          table_code: safeTableCode,
+          phase: 'waiting',
+          players: updatedPlayers,
+          active_story: "Eri a cena con un vecchio amico che non vedevi da anni.",
+          timer_duration: 60,
+          votes: {},
+          logs: updatedLogs,
+        },
+      ]);
+
+    if (createSessionError) throw createSessionError;
+    return;
+  }
+
+  const { error: updateSessionError } = await supabase
+    .from('game_sessions')
+    .update({
+      players: updatedPlayers,
+      logs: updatedLogs,
+    })
+    .eq('table_code', safeTableCode);
+
+  if (updateSessionError) throw updateSessionError;
+};
+
 export default function ReceptionScanner() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -92,36 +155,37 @@ export default function ReceptionScanner() {
 
       if (selectError) throw selectError;
 
-      if (existing) {
-        const updatePayload = { status: 'validated' };
-        if (!existing.name && parsed.name) updatePayload.name = parsed.name;
-        if (!existing.table_code && parsed.tableCode) updatePayload.table_code = parsed.tableCode;
-
-        const { error: updateError } = await supabase
-          .from('participants')
-          .update(updatePayload)
-          .eq('ticket_id', ticketId);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('participants')
-          .insert([
-            {
-              ticket_id: ticketId,
-              name: parsed.name || null,
-              table_code: parsed.tableCode || DEFAULT_TABLE_CODE,
-              status: 'validated',
-            },
-          ]);
-
-        if (insertError) throw insertError;
+      if (!existing) {
+        setStatus({
+          type: 'error',
+          message: `Ticket ${ticketId} non trovato nel database prenotazioni. Verifica che sia stato acquistato dal sito.`,
+        });
+        return;
       }
 
-      setStatus({ type: 'success', message: `Ticket ${ticketId} validato e inviato alla reception.` });
+      const updatePayload = { status: 'validated' };
+      if (!existing.name && parsed.name) updatePayload.name = parsed.name;
+      if (!existing.table_code && parsed.tableCode) updatePayload.table_code = parsed.tableCode;
+
+      const { error: updateError } = await supabase
+        .from('participants')
+        .update(updatePayload)
+        .eq('ticket_id', ticketId);
+
+      if (updateError) throw updateError;
+
+      const resolvedName = existing.name || parsed.name || '';
+      const resolvedTableCode = existing.table_code || parsed.tableCode || DEFAULT_TABLE_CODE;
+      await registerPlayerProfile({ ticketId, name: resolvedName, tableCode: resolvedTableCode });
+
+      setStatus({ type: 'success', message: `Ticket ${ticketId} validato e profilo giocatore creato automaticamente.` });
       setManualInput('');
     } catch (err) {
-      setStatus({ type: 'error', message: err.message || 'Errore conferma ticket.' });
+      const rawMessage = err.message || 'Errore conferma ticket.';
+      const userMessage = rawMessage.includes('row-level security')
+        ? 'Permesso negato da Supabase (RLS). Il ticket deve esistere e la policy deve consentire update su participants.'
+        : rawMessage;
+      setStatus({ type: 'error', message: userMessage });
     } finally {
       setIsProcessing(false);
     }
