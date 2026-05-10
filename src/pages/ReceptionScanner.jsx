@@ -50,6 +50,11 @@ const normalizeTicketId = (ticketId = '') => {
   return withoutPrefix.split('|')[0].trim();
 };
 
+const isRlsError = (error) => {
+  const message = `${error?.message || ''}`.toLowerCase();
+  return message.includes('row-level security') || message.includes('permission denied');
+};
+
 const getBarcodeDetector = () => {
   if (typeof window === 'undefined' || typeof window.BarcodeDetector === 'undefined') {
     return null;
@@ -160,6 +165,8 @@ export default function ReceptionScanner() {
     setStatus({ type: 'loading', message: `Conferma ticket ${ticketId} in corso...` });
 
     try {
+      const warnings = [];
+
       const { data: ticketRow, error: ticketError } = await supabase
         .from('tickets')
         .select('*')
@@ -181,9 +188,12 @@ export default function ReceptionScanner() {
         .eq('ticket_id', ticketId)
         .maybeSingle();
 
-      if (existingParticipantError) throw existingParticipantError;
+      if (existingParticipantError && !isRlsError(existingParticipantError)) throw existingParticipantError;
+      if (existingParticipantError && isRlsError(existingParticipantError)) {
+        warnings.push('RLS su participants: aggiornamento reception saltato.');
+      }
 
-      if (!existingParticipant) {
+      if (!existingParticipant && !existingParticipantError) {
         const { error: createParticipantError } = await supabase
           .from('participants')
           .insert([
@@ -195,8 +205,11 @@ export default function ReceptionScanner() {
             },
           ]);
 
-        if (createParticipantError) throw createParticipantError;
-      } else {
+        if (createParticipantError && !isRlsError(createParticipantError)) throw createParticipantError;
+        if (createParticipantError && isRlsError(createParticipantError)) {
+          warnings.push('RLS su participants: creazione partecipante saltata.');
+        }
+      } else if (existingParticipant && !existingParticipantError) {
         const { error: updateParticipantError } = await supabase
           .from('participants')
           .update({
@@ -206,7 +219,10 @@ export default function ReceptionScanner() {
           })
           .eq('ticket_id', ticketId);
 
-        if (updateParticipantError) throw updateParticipantError;
+        if (updateParticipantError && !isRlsError(updateParticipantError)) throw updateParticipantError;
+        if (updateParticipantError && isRlsError(updateParticipantError)) {
+          warnings.push('RLS su participants: validazione stato saltata.');
+        }
       }
 
       const { error: markUsedError } = await supabase
@@ -214,16 +230,21 @@ export default function ReceptionScanner() {
         .update({ is_used: true })
         .eq('id', ticketId);
 
-      if (markUsedError) throw markUsedError;
+      if (markUsedError && !isRlsError(markUsedError)) throw markUsedError;
+      if (markUsedError && isRlsError(markUsedError)) {
+        warnings.push('RLS su tickets: flag is_used non aggiornato.');
+      }
 
       await registerPlayerProfile({ ticketId, name: participantName, tableCode: participantTable });
 
-      setStatus({ type: 'success', message: `Ticket ${ticketId} validato e profilo giocatore creato automaticamente.` });
+      const baseMessage = `Ticket ${ticketId} validato e profilo giocatore creato automaticamente.`;
+      const finalMessage = warnings.length > 0 ? `${baseMessage} Avvisi: ${warnings.join(' ')}` : baseMessage;
+      setStatus({ type: warnings.length > 0 ? 'error' : 'success', message: finalMessage });
       setManualInput('');
     } catch (err) {
       const rawMessage = err.message || 'Errore conferma ticket.';
       const userMessage = rawMessage.includes('row-level security')
-        ? 'Permesso negato da Supabase (RLS). Il ticket deve esistere e la policy deve consentire update su participants.'
+        ? 'Permesso negato da Supabase (RLS). Serve policy su game_sessions/participants/tickets per completare tutto il flusso.'
         : rawMessage;
       setStatus({ type: 'error', message: userMessage });
     } finally {
