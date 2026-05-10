@@ -7,5 +7,11 @@ export const useGameSession = () => {
   const supabaseSession = useSupabaseSession();
   const demoSession = useDemoSession();
 
-  return isDemo ? demoSession : supabaseSession;
+  // In production, demo must stay synchronized across devices.
+  // Local-only demo session is kept for localhost development.
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  return isDemo && isLocalhost ? demoSession : supabaseSession;
 };

@@ -7,6 +7,14 @@ import { QrCode, Scan, ShieldCheck, AlertCircle, Loader2, MapPin, Ticket, CheckC
 import { useSupabaseSession } from '@/hooks/useSupabaseSession';
 import { supabase } from '@/lib/supabase';
 
+const generateDemoIdentity = () => {
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return {
+    name: `Giocatore Demo ${suffix}`,
+    ticketId: `DEMO-${suffix}`,
+  };
+};
+
 const JoinGame = ({ onJoin, onDemo, setIsDemo }) => {
   const { session, registerPlayer } = useSupabaseSession();
   const [step, setStep] = useState('ticket'); // ticket, waiting, table, success
@@ -35,7 +43,8 @@ const JoinGame = ({ onJoin, onDemo, setIsDemo }) => {
     if (ticketId.toUpperCase() === 'DEMO') {
       setIsDemo(true);
       sessionStorage.setItem('liar_is_demo', 'true');
-      const demoUser = { name: 'Giocatore Demo', ticket_id: 'DEMO', table_code: 'BBL-QR-7' };
+      const demoIdentity = generateDemoIdentity();
+      const demoUser = { name: demoIdentity.name, ticket_id: demoIdentity.ticketId, table_code: 'BBL-QR-7' };
       setParticipant(demoUser);
       setStep('table');
       setStatus('idle');
