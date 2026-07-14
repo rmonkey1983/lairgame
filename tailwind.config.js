@@ -4,14 +4,17 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        dark: '#0a0a0f',
+        bgDark: '#000000',
+        accentRed: '#dc2626',
+        goldPremium: '#f5c542',
       },
-      borderRadius: {
-        'bento': '24px',
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Syne', 'sans-serif'],
+        mono: ['Roboto Mono', 'monospace'],
       }
     },
   },

@@ -1,0 +1,17 @@
+{
+  "name": "Liar System - Black Bulls Lab",
+  "short_name": "LiarSystem",
+  "description": "Interactive Mystery Dinner & Game System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

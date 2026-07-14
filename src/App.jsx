@@ -1,106 +1,63 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import BackgroundEffects from './components/game/BackgroundEffects';
-import { RefreshCw } from 'lucide-react';
+import { lazy, Suspense } from 'react';
+import { HashRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
-const SplashScreen = lazy(() => import('./pages/SplashScreen'));
-const JoinGame = lazy(() => import('./pages/JoinGame'));
-const GameScreen = lazy(() => import('./pages/GameScreen'));
-const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
-const ReceptionScanner = lazy(() => import('./pages/ReceptionScanner'));
+// Importazione lazy dei due nuovi componenti principali
+const PlayerTerminal = lazy(() => import('./pages/PlayerTerminal'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
-function AppContent() {
-  const location = useLocation();
-  const [user, setUser] = useState(() => {
-    const saved = sessionStorage.getItem('liar_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  
-  const [isDemo, setIsDemo] = useState(() => sessionStorage.getItem('liar_is_demo') === 'true');
-
-  const navigate = useNavigate();
-  const didRestoreRef = useRef(false);
-
-  useEffect(() => {
-    if (user) sessionStorage.setItem('liar_user', JSON.stringify(user));
-    sessionStorage.setItem('liar_is_demo', isDemo ? 'true' : 'false');
-  }, [user, isDemo]);
-
-  useEffect(() => {
-    sessionStorage.setItem('liar_last_route', location.pathname);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (didRestoreRef.current) return;
-    didRestoreRef.current = true;
-
-    const savedRoute = sessionStorage.getItem('liar_last_route');
-    const isEntryRoute = location.pathname === '/' || location.pathname === '/join';
-
-    if (!isEntryRoute) return;
-
-    if (user?.isHost) {
-      navigate('/admin', { replace: true });
-      return;
-    }
-
-    if (user?.name) {
-      navigate('/game', { replace: true });
-      return;
-    }
-
-    if (savedRoute && savedRoute !== '/' && savedRoute !== '/join') {
-      navigate(savedRoute, { replace: true });
-    }
-  }, [location.pathname, navigate, user]);
-
-  const handleEnter = () => navigate('/join');
-
-  const handleJoin = (userData) => {
-    setUser({ ...userData, isHost: false });
-    // isDemo is already set by JoinGame if they use the DEMO ticket
-    navigate('/game');
-  };
-
-  const handleDemo = () => {
-    setUser({ name: 'Regia-Admin', tableCode: 'BBL-QR-7', isHost: true });
-    setIsDemo(true);
-    navigate('/admin'); // Admin should go to /admin
-  };
-
-  return (
-    <AnimatePresence mode="wait">
-      <Suspense
-        fallback={
-          <div className="relative min-h-screen w-full bg-[#000000] flex flex-col items-center justify-center p-6 font-display">
-            <BackgroundEffects />
-            <RefreshCw size={40} className="text-[#ff003c] animate-spin relative z-10" />
-          </div>
-        }
-      >
-        <Routes>
-          <Route path="/" element={<SplashScreen onEnter={handleEnter} />} />
-          <Route path="/join" element={<JoinGame onJoin={handleJoin} onDemo={handleDemo} setIsDemo={setIsDemo} />} />
-          <Route
-            path="/game"
-            element={<GameScreen currentUser={user} isDemo={isDemo} />}
-          />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/scanner-reception" element={<ReceptionScanner />} />
-        </Routes>
-      </Suspense>
-    </AnimatePresence>
-  );
-}
+// Fallback loader semplice
+const PageLoader = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center text-red-500 font-mono text-xs tracking-widest uppercase animate-pulse">
+    Caricamento...
+  </div>
+);
 
 function App() {
   return (
-    <Router>
-      <div className="app-container font-sans bg-[#0a0a0f] min-h-screen text-white">
-        <AppContent />
-      </div>
-    </Router>
+    <HashRouter>
+      <Toaster
+        position="bottom-center"
+        gutter={10}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#0a0a0a',
+            color: '#d4d4d4',
+            border: '1px solid #262626',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: '11px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            borderRadius: '0',
+            boxShadow: '6px 6px 12px #000000, -6px -6px 12px #1a1a1a',
+            padding: '10px 16px',
+          },
+          success: {
+            duration: 3500,
+            iconTheme: { primary: '#22c55e', secondary: '#0a0a0a' },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: { primary: '#ef4444', secondary: '#0a0a0a' },
+          },
+        }}
+      />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Rotta Principale Giocatore */}
+          <Route path="/" element={<PlayerTerminal />} />
+          <Route path="/t/:tableCode/join" element={<PlayerTerminal />} />
+          <Route path="/t/:tableCode/player-panel" element={<PlayerTerminal />} />
+          <Route path="/t/:tableCode/game" element={<PlayerTerminal />} />
+
+          {/* Rotta Regia Core */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/t/:tableCode/admin" element={<AdminDashboard />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </HashRouter>
   );
 }
 

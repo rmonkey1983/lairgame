@@ -1,0 +1,32 @@
+[
+  {
+    "minute_trigger": 1,
+    "target_logic": "all",
+    "payload": {
+      "type": "message",
+      "title": "Benvenuto nel Liar System",
+      "message": "La partita è iniziata. Prestate attenzione alle risposte di ciascun giocatore al tavolo.",
+      "duration_seconds": 20
+    }
+  },
+  {
+    "minute_trigger": 15,
+    "target_logic": "all",
+    "payload": {
+      "type": "dilemma",
+      "title": "Il Bivio della Verità",
+      "message": "Un pacchetto dati crittografato è stato intercettato. Scegliete se decodificare il file o distruggerlo.",
+      "buttons": [
+        {
+          "label": "Decodifica",
+          "action": "decrypt"
+        },
+        {
+          "label": "Distruggi",
+          "action": "destroy"
+        }
+      ],
+      "duration_seconds": 45
+    }
+  }
+]
