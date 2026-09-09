@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AppRoutes } from './router'
 import App from './App'
+import { ErrorBoundary } from '../components/common/ErrorBoundary'
 
 function renderRoute(path: string) { return render(<MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter>) }
 describe('foundation routes', () => {
@@ -12,4 +13,10 @@ describe('foundation routes', () => {
   it('renders player game code', () => { renderRoute('/play/ABC123'); expect(screen.getByText('ABC123')).toBeInTheDocument() })
   it('renders admin game context', () => { renderRoute('/admin/games/ROOM7'); expect(screen.getByText('ROOM7')).toBeInTheDocument() })
   it('renders not found', () => { renderRoute('/unknown'); expect(screen.getByRole('heading', { name: 'Pagina non trovata' })).toBeInTheDocument() })
+  it('shows recovery fallback when a child render fails', () => {
+    function BrokenPage() { throw new Error('technical detail'); return null }
+    render(<ErrorBoundary><BrokenPage /></ErrorBoundary>)
+    expect(screen.getByRole('heading', { name: 'Liar System ha riscontrato un problema.' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ricarica applicazione' })).toBeInTheDocument()
+  })
 })

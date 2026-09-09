@@ -32,6 +32,8 @@ Node 22.12+, React 19.2.x, TypeScript, Vite 8.x, Tailwind 4.x, React Router con 
 
 RLS deny-by-default. Player anonimo vincolato a `players.auth_user_id = auth.uid()`. Staff richiede Auth persistente e membership attiva. Nessun secret/service-role key nel browser. Dati privati: ruolo, missioni, clue, voti altrui, dati Regia e assegnazioni globali.
 
+`VITE_*` è sempre configurazione pubblica client-visible; nessun secret client. Errori tecnici restano separati da messaggi user-safe. Error Boundary applicativo obbligatorio. Recovery Player preserva identity logica, game, placement e ruolo; autorizzazione futura server-side e auditabile.
+
 ## Database e migrazioni
 
 Prima progettare e approvare decisioni. Migrazioni additive, ordinate, reversibili quando possibile; mai modificare migrazione già applicata. Nessun `db push`, deploy o operazione Supabase remota senza richiesta esplicita. Ledger Coin append-only; saldo derivato; idempotency/correlation key obbligatoria.
@@ -47,6 +49,10 @@ Ispezionare stato corrente e worktree. Cambiare solo scope autorizzato. Test mir
 ## Git e divieti
 
 No commit, push, reset distruttivo o cleanup non richiesto. No installazioni casuali, codice legacy, feature premature, editor scenario, chat, statistiche inutili, HashRouter, client-side authority, `USING(true)` su dati privati.
+
+## Frontend quality
+
+Preferire semantic/accessibility queries nei test (`getByRole`, `getByLabelText`, `getByText`).
 
 ## Done
 

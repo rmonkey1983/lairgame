@@ -10,6 +10,7 @@
 - **Concurrency**: join same slot, role collision, bid close, reward, vote duplicate.
 - **Resilience**: refresh, offline, lost Broadcast, duplicate tab/submission, recovery.
 - **UI/accessibility**: viewport 360–430, keyboard, focus, screen reader semantics, stale/error states.
+- **Frontend foundation**: Error Boundary fallback, root error hooks, Result/Error, session/recovery contracts, semantic queries and route regressions.
 - **E2E**: admin lifecycle plus Player journey.
 
 ## Final V1 simulation

@@ -22,3 +22,7 @@ Non usare localStorage per ruoli o autorità. Session recovery/rebind deve verif
 ## Security gates
 
 Test matrix RLS anonimo/player/staff/revoked; RPC authorization e replay; leak scans snapshot/Broadcast/log; secret scan; browser storage inspection; headers e configurazione deploy. Build verde non equivale a security validation.
+
+## Client environment and recovery
+
+Ogni `VITE_*` è pubblico nel browser. Nessun secret, token o credenziale entra in env client. Errori tecnici non sono messaggi UI. Recovery/rebind Player conserva identity logica, game, tavolo/posto e ruolo; approvazione futura Staff, enforcement server-side e audit restano obbligatori.
