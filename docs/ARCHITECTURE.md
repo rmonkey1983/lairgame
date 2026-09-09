@@ -33,6 +33,8 @@ Frontend contiene solo publishable key e config pubblica. Service role resta ser
 
 La fondazione database resta migration-first: il reset locale ricrea lo schema e i tipi TypeScript generati sono DTO del database, separati dai contratti del dominio. RLS e grants espliciti mantengono il core deny-by-default finché Auth/Join non introduce accessi mirati.
 
+Player Join introduce un solo client browser Supabase con publishable key e session persistence. Anonymous Auth parte solo da CTA Join; RPC server-side derivano identity da `auth.uid()`, validano `is_anonymous` e restituiscono DTO Player-safe. PlayerShell ricarica solo il proprio stato.
+
 ## Frontend resilience boundary
 
 L'applicazione usa un Error Boundary globale per fallback di rendering e callback React root per reporting tecnico. Boundary mostra solo messaggi user-safe; logger riceve dettagli tecnici senza trasformarli in UI. Contratti Result/Error e session/recovery restano statici fino all'introduzione autorizzata dell'autorità server.

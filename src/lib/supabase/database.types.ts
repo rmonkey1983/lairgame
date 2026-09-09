@@ -1,5 +1,3 @@
-// GENERATED FILE — DO NOT EDIT
-
 export type Json =
   | string
   | number
@@ -191,7 +189,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_join_state: {
+        Args: { p_game_code: string }
+        Returns: {
+          game_code: string
+          game_id: string
+          join_status: string
+          nickname: string
+          player_id: string
+          seat_number: number
+          table_number: number
+        }[]
+      }
+      join_game: {
+        Args: {
+          p_game_code: string
+          p_nickname: string
+          p_seat_number: number
+          p_table_number: number
+        }
+        Returns: {
+          game_code: string
+          game_id: string
+          join_status: string
+          nickname: string
+          player_id: string
+          seat_number: number
+          table_number: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

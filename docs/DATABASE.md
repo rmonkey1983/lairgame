@@ -29,3 +29,9 @@ La migration `create_core_game_schema` crea esclusivamente `events`, `games`, `g
 La migration è l’unica fonte dello schema: niente modifiche manuali via Studio. Tutte le tabelle hanno RLS attiva e grants espliciti; la baseline non concede accesso a `anon` o `authenticated`. `players.id` è l’identità logica stabile, distinta dal binding `auth_user_id`.
 
 La FK composta `(players.game_id, players.table_id)` verso `game_tables` impedisce assegnazioni di un player a un tavolo di un altro game. I tipi DB generati dal database locale sono in `src/lib/supabase/database.types.ts` e non sostituiscono i domain types.
+
+## Player anonymous join (Milestone 5)
+
+`secure_player_join` aggiunge lookup case-insensitive del game code e due RPC: `join_game` crea o riusa un Player usando solo `auth.uid()`; `get_my_join_state` restituisce solo il Player corrente. Entrambe verificano claim `is_anonymous`; `join_game` accetta nuovi ingressi solo con lifecycle `checkin_open`.
+
+Le RPC sono `SECURITY DEFINER` con `search_path = ''`, riferimenti schema-qualified, `EXECUTE` solo ad `authenticated`, mai a `PUBLIC` o `anon`. Tabelle restano senza grant CRUD: Player creation passa dalla RPC. Unique `(game_id, auth_user_id)` e `(game_id, table_id, seat_number)` proteggono retry e seat race.
