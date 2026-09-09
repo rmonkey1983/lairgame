@@ -26,3 +26,7 @@ Test matrix RLS anonimo/player/staff/revoked; RPC authorization e replay; leak s
 ## Client environment and recovery
 
 Ogni `VITE_*` è pubblico nel browser. Nessun secret, token o credenziale entra in env client. Errori tecnici non sono messaggi UI. Recovery/rebind Player conserva identity logica, game, tavolo/posto e ruolo; approvazione futura Staff, enforcement server-side e audit restano obbligatori.
+
+## Database baseline
+
+Lo schema è migration-first e ricostruibile con `supabase db reset`; non sono ammesse modifiche manuali via Studio. Le tabelle core hanno RLS obbligatoria e grants espliciti: fino alle milestone Auth/Join, `anon` e `authenticated` non hanno CRUD utile. Non esistono ancora policy Player/Staff né funzioni `SECURITY DEFINER`.

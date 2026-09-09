@@ -21,3 +21,11 @@ Read: player/admin snapshot bounded, roster sanitizzato, vote turnout, health. C
 1. extensions/enums e timestamp policy; 2. identity/access; 3. Event/Game/Table/Scenario; 4. version content; 5. runtime secret domains; 6. ledger/auction/vote; 7. audit; 8. RLS; 9. RPC; 10. Realtime authorization; 11. controlled seed/test fixtures.
 
 Nessuna migration SQL in Milestone 0. Decidere prima retention, soft-delete, enum strategy, session recovery e granularità membership.
+
+## Core foundation (Milestone 4)
+
+La migration `create_core_game_schema` crea esclusivamente `events`, `games`, `game_tables`, `players` e `staff_members`. Lifecycle e narrative phase sono `text` con `CHECK`: i valori restano leggibili e una futura migration può estenderli senza dipendere da enum PostgreSQL.
+
+La migration è l’unica fonte dello schema: niente modifiche manuali via Studio. Tutte le tabelle hanno RLS attiva e grants espliciti; la baseline non concede accesso a `anon` o `authenticated`. `players.id` è l’identità logica stabile, distinta dal binding `auth_user_id`.
+
+La FK composta `(players.game_id, players.table_id)` verso `game_tables` impedisce assegnazioni di un player a un tavolo di un altro game. I tipi DB generati dal database locale sono in `src/lib/supabase/database.types.ts` e non sostituiscono i domain types.
