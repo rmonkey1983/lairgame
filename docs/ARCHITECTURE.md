@@ -41,6 +41,8 @@ Le RPC esposte seguono un confine stabile: wrapper `SECURITY INVOKER` in `public
 
 La Regia usa `list_staff_games` e `get_staff_game_overview` come read model snapshot: ogni RPC autorizza autonomamente una membership Staff attiva e legge i conteggi dal database. `/admin/games/:gameCode` mantiene il game code esplicito; la selezione non è automatica.
 
+Il comando lifecycle segue il confine server-authoritative: PostgreSQL blocca la riga Game, verifica `expected_lifecycle`, applica solo la matrice approvata e scrive l'audit nella stessa transazione. `command_id` rende il retry idempotente; la state machine frontend filtra soltanto l'UX.
+
 ## Frontend resilience boundary
 
 L'applicazione usa un Error Boundary globale per fallback di rendering e callback React root per reporting tecnico. Boundary mostra solo messaggi user-safe; logger riceve dettagli tecnici senza trasformarli in UI. Contratti Result/Error e session/recovery restano statici fino all'introduzione autorizzata dell'autorità server.

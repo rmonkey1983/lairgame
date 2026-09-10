@@ -39,6 +39,51 @@ export type Database = {
         }
         Relationships: []
       }
+      game_lifecycle_commands: {
+        Row: {
+          command_id: string
+          created_at: string
+          from_lifecycle: string
+          game_id: string
+          id: string
+          staff_member_id: string
+          to_lifecycle: string
+        }
+        Insert: {
+          command_id: string
+          created_at?: string
+          from_lifecycle: string
+          game_id: string
+          id?: string
+          staff_member_id: string
+          to_lifecycle: string
+        }
+        Update: {
+          command_id?: string
+          created_at?: string
+          from_lifecycle?: string
+          game_id?: string
+          id?: string
+          staff_member_id?: string
+          to_lifecycle?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_lifecycle_commands_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_lifecycle_commands_staff_member_id_fkey"
+            columns: ["staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_tables: {
         Row: {
           created_at: string
@@ -253,6 +298,22 @@ export type Database = {
           starts_at: string
           table_count: number
           venue_name: string
+        }[]
+      }
+      transition_game_lifecycle: {
+        Args: {
+          command_id: string
+          expected_lifecycle: string
+          game_code: string
+          target_lifecycle: string
+        }
+        Returns: {
+          changed_at: string
+          command_id: string
+          game_code: string
+          game_id: string
+          lifecycle: string
+          previous_lifecycle: string
         }[]
       }
     }
