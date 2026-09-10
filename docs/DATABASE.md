@@ -34,8 +34,10 @@ La FK composta `(players.game_id, players.table_id)` verso `game_tables` impedis
 
 `secure_player_join` aggiunge lookup case-insensitive del game code e due RPC: `join_game` crea o riusa un Player usando solo `auth.uid()`; `get_my_join_state` restituisce solo il Player corrente. Entrambe verificano claim `is_anonymous`; `join_game` accetta nuovi ingressi solo con lifecycle `checkin_open`.
 
-Le RPC sono `SECURITY DEFINER` con `search_path = ''`, riferimenti schema-qualified, `EXECUTE` solo ad `authenticated`, mai a `PUBLIC` o `anon`. Tabelle restano senza grant CRUD: Player creation passa dalla RPC. Unique `(game_id, auth_user_id)` e `(game_id, table_id, seat_number)` proteggono retry e seat race.
+Le RPC mantengono il contratto pubblico ma usano un wrapper `SECURITY INVOKER` in `public` che delega a un'implementazione `SECURITY DEFINER` nello schema non esposto `private`. Ogni implementazione privata usa `search_path = ''`, riferimenti schema-qualified e deriva l'identità da Auth; `EXECUTE` è concesso solo ad `authenticated`, mai a `PUBLIC` o `anon`. Tabelle restano senza grant CRUD: Player creation passa dalla RPC. Unique `(game_id, auth_user_id)` e `(game_id, table_id, seat_number)` proteggono retry e seat race.
 
 ## Staff membership gate (Milestone 6)
 
 `staff_auth_gate` aggiunge `get_my_staff_access()`, senza parametri client. La RPC restituisce solo membership corrente attiva; `auth.uid()` e claim `is_anonymous` sono verificati server-side. `staff_members` resta senza `SELECT` diretto e nessuna modifica a games è inclusa.
+
+Le funzioni `SECURITY DEFINER` privilegiate non devono vivere in schemi esposti dalla Data API: il pattern è `public` wrapper invoker → `private` implementation definer con `SET search_path = ''`. Lo schema `private` non va aggiunto a `api.schemas` in `config.toml`.

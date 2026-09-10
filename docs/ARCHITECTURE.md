@@ -37,6 +37,8 @@ Player Join introduce un solo client browser Supabase con publishable key e sess
 
 Staff usa client browser distinto, stessa URL/key pubblica ma storage key separata. `StaffGate` riconferma sessione e membership attiva tramite RPC prima di esporre route Admin; login fallito o membership revocata porta a login senza leggere games.
 
+Le RPC esposte seguono un confine stabile: wrapper `SECURITY INVOKER` in `public` e implementazione privilegiata `SECURITY DEFINER` nello schema non esposto `private`. Nessuna funzione privilegiata vive in uno schema esposto alla Data API.
+
 ## Frontend resilience boundary
 
 L'applicazione usa un Error Boundary globale per fallback di rendering e callback React root per reporting tecnico. Boundary mostra solo messaggi user-safe; logger riceve dettagli tecnici senza trasformarli in UI. Contratti Result/Error e session/recovery restano statici fino all'introduzione autorizzata dell'autorità server.
