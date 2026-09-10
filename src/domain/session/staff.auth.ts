@@ -13,6 +13,7 @@ function mapStaffError(error: { message: string }, fallback = 'Accesso Regia non
     AUTH_REQUIRED: 'Sessione Staff non disponibile.',
     STAFF_AUTH_REQUIRED: 'Accesso Staff richiesto.',
     STAFF_ACCESS_DENIED: 'Accesso Regia non autorizzato.',
+    GAME_NOT_FOUND: 'Partita non trovata.',
   }
   return fail(appError(messages[error.message] ? 'FORBIDDEN' : 'UNKNOWN', messages[error.message] ?? fallback, { cause: error, retryable: !messages[error.message] }))
 }

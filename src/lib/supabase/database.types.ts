@@ -209,6 +209,21 @@ export type Database = {
           staff_member_id: string
         }[]
       }
+      get_staff_game_overview: {
+        Args: { p_game_code: string }
+        Returns: {
+          code: string
+          created_at: string
+          event_name: string
+          id: string
+          lifecycle: string
+          narrative_phase: string
+          player_count: number
+          starts_at: string
+          table_count: number
+          venue_name: string
+        }[]
+      }
       join_game: {
         Args: {
           p_game_code: string
@@ -224,6 +239,20 @@ export type Database = {
           player_id: string
           seat_number: number
           table_number: number
+        }[]
+      }
+      list_staff_games: {
+        Args: never
+        Returns: {
+          event_name: string
+          game_code: string
+          game_id: string
+          lifecycle: string
+          narrative_phase: string
+          player_count: number
+          starts_at: string
+          table_count: number
+          venue_name: string
         }[]
       }
     }

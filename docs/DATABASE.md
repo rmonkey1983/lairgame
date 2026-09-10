@@ -41,3 +41,7 @@ Le RPC mantengono il contratto pubblico ma usano un wrapper `SECURITY INVOKER` i
 `staff_auth_gate` aggiunge `get_my_staff_access()`, senza parametri client. La RPC restituisce solo membership corrente attiva; `auth.uid()` e claim `is_anonymous` sono verificati server-side. `staff_members` resta senza `SELECT` diretto e nessuna modifica a games è inclusa.
 
 Le funzioni `SECURITY DEFINER` privilegiate non devono vivere in schemi esposti dalla Data API: il pattern è `public` wrapper invoker → `private` implementation definer con `SET search_path = ''`. Lo schema `private` non va aggiunto a `api.schemas` in `config.toml`.
+
+## Staff game read model (Milestone 7)
+
+`list_staff_games()` e `get_staff_game_overview(text)` restituiscono unicamente il contesto operativo Staff e conteggi server-side da `games`, `events`, `game_tables` e `players`. Le tabelle core restano senza `SELECT` diretto; ogni RPC verifica `auth.uid()`, non-anonymous Auth e membership attiva. Il `gameCode` nell'URL è il contesto esplicito della pagina, senza auto-selezione.

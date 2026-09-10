@@ -36,3 +36,5 @@ Anonymous Auth usa ruolo Postgres `authenticated`, non ruolo `anon`. La sessione
 Staff usa storage Auth separato dal Player, login esclusivamente email/password e autorizzazione server-side tramite `staff_members.auth_user_id = auth.uid()` con `active = true`. Authentication non equivale a Staff authorization. Logout Staff usa scope locale; credenziali Admin API restano solo in helper/dev server-side, mai in `VITE_*` o browser.
 
 Le funzioni privilegiate `SECURITY DEFINER` non risiedono in schemi esposti alla Data API. Join e access gate espongono wrapper `SECURITY INVOKER` in `public`, delegando a implementazioni nello schema `private`, con `SET search_path = ''`, riferimenti qualificati e grant `EXECUTE` minimo. `private` non è esposto in `supabase/config.toml` e non concede usage a `anon`.
+
+Il read model Staff mantiene lo stesso confine: wrapper pubblici invoker, implementazioni private definer con `search_path = ''`, execute solo ad `authenticated`. Nessun roster, auth ID o dato gameplay è restituito; gli errori RPC sono mappati in messaggi user-safe.
