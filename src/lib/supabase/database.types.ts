@@ -201,6 +201,14 @@ export type Database = {
           table_number: number
         }[]
       }
+      get_my_staff_access: {
+        Args: never
+        Returns: {
+          active: boolean
+          display_name: string
+          staff_member_id: string
+        }[]
+      }
       join_game: {
         Args: {
           p_game_code: string

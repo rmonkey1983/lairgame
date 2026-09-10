@@ -5,13 +5,14 @@ import { AppRoutes } from './router'
 import App from './App'
 import { ErrorBoundary } from '../components/common/ErrorBoundary'
 
+
 function renderRoute(path: string) { return render(<MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter>) }
 describe('foundation routes', () => {
   afterEach(cleanup)
   it('mounts App with BrowserRouter', () => { render(<App />); expect(screen.getByRole('heading', { name: 'Liar System' })).toBeInTheDocument() })
   it('renders home', () => { renderRoute('/'); expect(screen.getByRole('heading', { name: 'Liar System' })).toBeInTheDocument() })
   it('renders player game code', () => { renderRoute('/play/ABC123'); expect(screen.getByText('ABC123')).toBeInTheDocument() })
-  it('renders admin game context', () => { renderRoute('/admin/games/ROOM7'); expect(screen.getByText('ROOM7')).toBeInTheDocument() })
+  it('protects admin game context', async () => { renderRoute('/admin/games/ROOM7'); expect(await screen.findByRole('heading', { name: 'Accesso Regia' })).toBeInTheDocument() })
   it('renders not found', () => { renderRoute('/unknown'); expect(screen.getByRole('heading', { name: 'Pagina non trovata' })).toBeInTheDocument() })
   it('shows recovery fallback when a child render fails', () => {
     function BrokenPage() { throw new Error('technical detail'); return null }

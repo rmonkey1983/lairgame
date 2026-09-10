@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
+    "dev:create-staff": "node scripts/create-local-staff.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

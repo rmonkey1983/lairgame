@@ -1,7 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { appError, fail, ok, type AppErrorCode, type Result } from '../../lib/errors/error.contracts'
 import { logger } from '../../lib/logging/logger'
-import { supabaseClient } from '../../lib/supabase/client'
+import { playerSupabaseClient } from '../../lib/supabase/player-client'
 
 export type PlayerJoinState = {
   player_id: string
@@ -34,14 +34,14 @@ function mapRpcError(error: { message: string }): Result<never> {
 }
 
 export async function ensureAnonymousPlayerSession(): Promise<Result<User>> {
-  if (!supabaseClient) return unavailable<User>()
-  const current = await supabaseClient.auth.getSession()
+  if (!playerSupabaseClient) return unavailable<User>()
+  const current = await playerSupabaseClient.auth.getSession()
   if (current.error) return fail(appError('NETWORK', 'Impossibile verificare la sessione.', { cause: current.error, retryable: true }))
   if (current.data.session) {
     if (current.data.session.user.is_anonymous !== true) return fail(appError('FORBIDDEN', 'Sessione non valida per Player.'))
     return ok(current.data.session.user)
   }
-  const signedIn = await supabaseClient.auth.signInAnonymously()
+  const signedIn = await playerSupabaseClient.auth.signInAnonymously()
   if (signedIn.error || !signedIn.data.user) {
     logger.warn('Anonymous sign-in failed', { cause: signedIn.error })
     return fail(appError('UNAUTHORIZED', 'Impossibile creare la sessione Player.', { cause: signedIn.error, retryable: true }))
@@ -50,8 +50,8 @@ export async function ensureAnonymousPlayerSession(): Promise<Result<User>> {
 }
 
 export async function joinGame(input: { gameCode: string; nickname: string; tableNumber: number; seatNumber: number }): Promise<Result<PlayerJoinState>> {
-  if (!supabaseClient) return unavailable<PlayerJoinState>()
-  const { data, error } = await supabaseClient.rpc('join_game', {
+  if (!playerSupabaseClient) return unavailable<PlayerJoinState>()
+  const { data, error } = await playerSupabaseClient.rpc('join_game', {
     p_game_code: input.gameCode,
     p_nickname: input.nickname,
     p_table_number: input.tableNumber,
@@ -62,13 +62,13 @@ export async function joinGame(input: { gameCode: string; nickname: string; tabl
 }
 
 export async function getMyJoinState(gameCode: string): Promise<Result<PlayerJoinState | null>> {
-  if (!supabaseClient) return unavailable<PlayerJoinState | null>()
-  const session = await supabaseClient.auth.getSession()
+  if (!playerSupabaseClient) return unavailable<PlayerJoinState | null>()
+  const session = await playerSupabaseClient.auth.getSession()
   if (session.error) return fail(appError('NETWORK', 'Impossibile verificare la sessione.', { cause: session.error, retryable: true }))
   if (!session.data.session || session.data.session.user.is_anonymous !== true) {
     return fail(appError('UNAUTHORIZED', 'Sessione Player non disponibile.'))
   }
-  const { data, error } = await supabaseClient.rpc('get_my_join_state', { p_game_code: gameCode })
+  const { data, error } = await playerSupabaseClient.rpc('get_my_join_state', { p_game_code: gameCode })
   if (error) return mapRpcError(error)
   return ok(data?.[0] ?? null)
 }
