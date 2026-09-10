@@ -40,3 +40,5 @@ Le funzioni privilegiate `SECURITY DEFINER` non risiedono in schemi esposti alla
 Il read model Staff mantiene lo stesso confine: wrapper pubblici invoker, implementazioni private definer con `search_path = ''`, execute solo ad `authenticated`. Nessun roster, auth ID o dato gameplay è restituito; gli errori RPC sono mappati in messaggi user-safe.
 
 Il lifecycle command autorizza nuovamente la membership Staff attiva nel database, non accetta identità privilegiate dal browser e non concede `UPDATE` diretto su `games`. Il lock di riga protegge la verifica dello stato atteso; `command_id` impedisce duplicati e il record audit viene scritto nella stessa transazione della mutazione.
+
+Il narrative phase command riapplica gli stessi controlli Staff e rifiuta ogni richiesta quando il lifecycle non è `live`. Il lock di riga serializza i comandi sul Game; `expected_phase` rifiuta stale state e una matrice server-side impedisce skip/backward transition. La tabella `game_narrative_phase_commands` è RLS-enabled, senza grant browser, e il retry identico restituisce l'audit esistente senza una seconda mutazione o registrazione.

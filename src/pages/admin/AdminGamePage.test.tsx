@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, transitionGameLifecycle, isStaleLifecycleError } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE') }))
+const { getStaffGameOverview, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE') }))
 vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
+vi.mock('../../domain/session/staff.game.phase.command', () => ({ transitionGameNarrativePhase, isStaleNarrativePhaseError }))
 
 function renderPage(path = '/admin/games/TEST01') { return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/admin/games/:gameCode" element={<AdminGamePage />} /><Route path="/admin/games" element={<p>games list</p>} /></Routes></MemoryRouter>) }
 
@@ -81,5 +82,57 @@ describe('AdminGamePage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Avvia partita' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Transizione lifecycle non consentita.')
     expect(screen.queryByText(/P0001|SQL|function/i)).not.toBeInTheDocument()
+  })
+  it('shows only the next narrative phase and no skip action', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    renderPage()
+    expect(await screen.findByRole('button', { name: 'Vai a scoperta ruoli' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vai al briefing' })).not.toBeInTheDocument()
+  })
+  it('disables the narrative command while pending', async () => {
+    let resolveCommand!: (value: unknown) => void
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    transitionGameNarrativePhase.mockImplementation(() => new Promise((resolve) => { resolveCommand = resolve }))
+    renderPage()
+    const phaseButton = await screen.findByRole('button', { name: 'Vai a scoperta ruoli' })
+    await userEvent.click(phaseButton)
+    expect(phaseButton).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Aggiornamento fase narrativa in corso…')
+    resolveCommand({ ok: true, value: { phase: 'role_reveal' } })
+  })
+  it('refetches authoritative phase after success', async () => {
+    getStaffGameOverview
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'role_reveal', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    transitionGameNarrativePhase.mockResolvedValue({ ok: true, value: { phase: 'role_reveal' } })
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Vai a scoperta ruoli' }))
+    expect((await screen.findAllByText('Role reveal')).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Vai al briefing' })).toBeInTheDocument()
+    expect(transitionGameNarrativePhase).toHaveBeenCalledWith(expect.objectContaining({ gameCode: 'TEST01', expectedPhase: 'lobby', targetPhase: 'role_reveal', commandId: expect.any(String) }))
+  })
+  it('refetches after a stale narrative phase and shows a safe message', async () => {
+    getStaffGameOverview
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'briefing', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    transitionGameNarrativePhase.mockResolvedValue({ ok: false, error: { userMessage: 'La fase narrativa è cambiata. Dati aggiornati.', cause: { message: 'STALE_GAME_STATE' } } })
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Vai a scoperta ruoli' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('La fase narrativa è cambiata. Dati aggiornati.')
+    expect(screen.getAllByText('Briefing').length).toBeGreaterThan(0)
+    expect(getStaffGameOverview).toHaveBeenCalledTimes(2)
+  })
+  it('does not expose a phase action when reveal is terminal', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'reveal', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    renderPage()
+    expect(await screen.findByText('Nessuna fase narrativa successiva.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Vai a/ })).not.toBeInTheDocument()
+  })
+  it('keeps the phase action disabled when lifecycle is not live', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    renderPage()
+    expect(await screen.findByRole('button', { name: 'Vai a scoperta ruoli' })).toBeDisabled()
+    expect(screen.getByText('Disponibile solo con lifecycle live.')).toBeInTheDocument()
+    expect(transitionGameNarrativePhase).not.toHaveBeenCalled()
   })
 })

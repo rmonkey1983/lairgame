@@ -49,3 +49,7 @@ Le funzioni `SECURITY DEFINER` privilegiate non devono vivere in schemi esposti 
 ## Lifecycle command (Milestone 8)
 
 `transition_game_lifecycle(text, text, text, uuid)` è l'unico comando Staff della milestone. L'implementazione privata usa `FOR UPDATE`, confronta lo stato atteso e applica la matrice lifecycle approvata; la modifica a `games.lifecycle` e l'inserimento in `game_lifecycle_commands` sono atomici. La tabella audit è append-only, con RLS e nessun grant browser.
+
+## Narrative phase command (Milestone 9)
+
+`transition_game_narrative_phase(text, text, text, uuid)` consente allo Staff attivo di avanzare `games.narrative_phase` solo mentre il lifecycle è `live`. La matrice è strettamente sequenziale da `lobby` a `reveal`, senza skip o backward transition; `reveal` non ha successori. `FOR UPDATE`, `expected_phase` e `command_id` proteggono concorrenza, stale state e retry. `game_narrative_phase_commands` registra una riga append-only per comando compatibile nella stessa transazione della mutazione, senza accesso CRUD browser.

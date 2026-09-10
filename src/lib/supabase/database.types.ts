@@ -84,6 +84,48 @@ export type Database = {
           },
         ]
       }
+      game_narrative_phase_commands: {
+        Row: {
+          command_id: string
+          created_at: string
+          from_phase: string
+          game_id: string
+          staff_member_id: string
+          to_phase: string
+        }
+        Insert: {
+          command_id: string
+          created_at?: string
+          from_phase: string
+          game_id: string
+          staff_member_id: string
+          to_phase: string
+        }
+        Update: {
+          command_id?: string
+          created_at?: string
+          from_phase?: string
+          game_id?: string
+          staff_member_id?: string
+          to_phase?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_narrative_phase_commands_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_narrative_phase_commands_staff_member_id_fkey"
+            columns: ["staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_tables: {
         Row: {
           created_at: string
@@ -314,6 +356,22 @@ export type Database = {
           game_id: string
           lifecycle: string
           previous_lifecycle: string
+        }[]
+      }
+      transition_game_narrative_phase: {
+        Args: {
+          command_id: string
+          expected_phase: string
+          game_code: string
+          target_phase: string
+        }
+        Returns: {
+          changed_at: string
+          command_id: string
+          game_code: string
+          game_id: string
+          phase: string
+          previous_phase: string
         }[]
       }
     }
