@@ -46,6 +46,10 @@ Le funzioni `SECURITY DEFINER` privilegiate non devono vivere in schemi esposti 
 
 `list_staff_games()` e `get_staff_game_overview(text)` restituiscono unicamente il contesto operativo Staff e conteggi server-side da `games`, `events`, `game_tables` e `players`. Le tabelle core restano senza `SELECT` diretto; ogni RPC verifica `auth.uid()`, non-anonymous Auth e membership attiva. Il `gameCode` nell'URL è il contesto esplicito della pagina, senza auto-selezione.
 
+## Staff game roster (Milestone 11)
+
+`get_staff_game_roster(text)` restituisce allo Staff attivo solo `player_id`, nickname, tavolo, posto e `joined_at`, ordinati per tavolo/posto; non espone `auth_user_id`. Un inserimento reale in `players` emette il wake-up Broadcast `game_state_changed` sul topic privato del Game; il retry idempotente non inserisce e non emette.
+
 ## Lifecycle command (Milestone 8)
 
 `transition_game_lifecycle(text, text, text, uuid)` è l'unico comando Staff della milestone. L'implementazione privata usa `FOR UPDATE`, confronta lo stato atteso e applica la matrice lifecycle approvata; la modifica a `games.lifecycle` e l'inserimento in `game_lifecycle_commands` sono atomici. La tabella audit è append-only, con RLS e nessun grant browser.

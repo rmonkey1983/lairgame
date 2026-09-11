@@ -27,6 +27,14 @@ export type StaffGameOverview = {
   player_count: number
 }
 
+export type StaffGameRosterPlayer = {
+  player_id: string
+  nickname: string
+  table_number: number
+  seat_number: number
+  joined_at: string
+}
+
 function unavailable<T>(): Result<T> {
   return fail(appError('TEMPORARY_UNAVAILABLE', 'Dati Regia non disponibili.', { retryable: false }))
 }
@@ -57,4 +65,11 @@ export async function getStaffGameOverview(gameCode: string): Promise<Result<Sta
   if (error) { logger.warn('Staff game overview failed', { cause: error }); return mapReadError(error) }
   if (!data?.[0]) return fail(appError('NOT_FOUND', 'Partita non trovata.'))
   return ok(data[0])
+}
+
+export async function getStaffGameRoster(gameCode: string): Promise<Result<StaffGameRosterPlayer[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGameRosterPlayer[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_roster', { game_code: gameCode })
+  if (error) { logger.warn('Staff game roster failed', { cause: error }); return mapReadError(error) }
+  return ok(data ?? [])
 }

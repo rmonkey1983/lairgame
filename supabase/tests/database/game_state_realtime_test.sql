@@ -50,14 +50,14 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000071
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000071","role":"authenticated","is_anonymous":false}', true);
 set local role authenticated;
 select * from public.transition_game_lifecycle('TEST01', 'checkin_open', 'live', '50000000-0000-0000-0000-000000000071');
-select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 1::bigint, 'lifecycle change emits once');
+select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 2::bigint, 'lifecycle change emits once');
 select is((select payload - 'id' from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed' limit 1), '{"kind": "game_state_changed"}'::jsonb, 'broadcast payload contains no state');
 select ok(not exists (select 1 from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed' and (payload ?| array['lifecycle', 'narrative_phase'])), 'broadcast payload omits lifecycle and phase');
 select * from public.transition_game_narrative_phase('TEST01', 'lobby', 'role_reveal', '50000000-0000-0000-0000-000000000072');
 reset role;
-select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 2::bigint, 'narrative phase change emits once');
+select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 3::bigint, 'narrative phase change emits once');
 update public.games set updated_at = now() where id = 'a0000000-0000-0000-0000-000000000050';
-select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 2::bigint, 'unrelated update emits nothing');
+select is((select count(*) from realtime.messages where topic = 'game:a0000000-0000-0000-0000-000000000050' and event = 'game_state_changed'), 3::bigint, 'unrelated update emits nothing');
 
 select * from finish();
 rollback;

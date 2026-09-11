@@ -4,7 +4,7 @@
 
 - `game:{game_id}`: wake-up privato condiviso per lo stato lifecycle/phase del Game.
 
-Producer: trigger PostgreSQL dopo una modifica reale a lifecycle o narrative phase. Consumer: Regia collegata. Evento `game_state_changed`; payload `{ "kind": "game_state_changed" }`, senza valori autoritativi.
+Producer: trigger PostgreSQL dopo una modifica reale a lifecycle, narrative phase o inserimento Player. Consumer: Regia collegata. Evento `game_state_changed`; payload `{ "kind": "game_state_changed" }`, senza valori autoritativi.
 
 ## Flow
 

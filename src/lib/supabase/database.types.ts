@@ -311,6 +311,16 @@ export type Database = {
           venue_name: string
         }[]
       }
+      get_staff_game_roster: {
+        Args: { game_code: string }
+        Returns: {
+          joined_at: string
+          nickname: string
+          player_id: string
+          seat_number: number
+          table_number: number
+        }[]
+      }
       join_game: {
         Args: {
           p_game_code: string

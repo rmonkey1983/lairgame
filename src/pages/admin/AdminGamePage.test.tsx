@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
-vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview }))
+const { getStaffGameOverview, getStaffGameRoster, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
+vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
 vi.mock('../../domain/session/staff.game.phase.command', () => ({ transitionGameNarrativePhase, isStaleNarrativePhaseError }))
 vi.mock('../../domain/session/staff.game.realtime', () => ({ subscribeToStaffGameState }))
@@ -36,6 +36,33 @@ describe('AdminGamePage', () => {
     wakeUp()
     expect(await screen.findAllByText('live')).not.toHaveLength(0)
     expect(getStaffGameOverview).toHaveBeenCalledTimes(2)
+  })
+  it('renders occupied and empty seats across the selected tables', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 2 } })
+    getStaffGameRoster.mockResolvedValue({ ok: true, value: [
+      { player_id: 'player-1', nickname: 'Alice', table_number: 1, seat_number: 1, joined_at: '2026-09-10T10:01:00Z' },
+      { player_id: 'player-2', nickname: 'Bob', table_number: 3, seat_number: 6, joined_at: '2026-09-10T10:02:00Z' },
+    ] })
+    renderPage()
+    expect(await screen.findByText('2 / 30 posti occupati')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tavolo 1' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tavolo 5' })).toBeInTheDocument()
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toBeInTheDocument()
+    expect(screen.getAllByText('Posto vuoto')).toHaveLength(28)
+  })
+  it('refetches roster together with overview after a wake-up', async () => {
+    let wakeUp!: () => void
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    getStaffGameRoster
+      .mockResolvedValueOnce({ ok: true, value: [] })
+      .mockResolvedValueOnce({ ok: true, value: [{ player_id: 'player-1', nickname: 'Cara', table_number: 2, seat_number: 3, joined_at: '2026-09-10T10:03:00Z' }] })
+    subscribeToStaffGameState.mockImplementationOnce((_gameId: string, callback: () => void) => { wakeUp = callback; return vi.fn() })
+    renderPage()
+    await screen.findByText('0 / 30 posti occupati')
+    wakeUp()
+    expect(await screen.findByText('Cara')).toBeInTheDocument()
+    expect(getStaffGameRoster).toHaveBeenCalledTimes(2)
   })
   it('cleans the selected game subscription on unmount', async () => {
     const unsubscribe = vi.fn()
