@@ -13,7 +13,7 @@ Assumere player curioso, sessione anonima rubata, client manipolato, replay/dopp
 - Service-role key e secret mai nel browser.
 - Commands transazionali con preconditions, idempotency e audit.
 - Ledger append-only; compensazione per correzioni, mai overwrite.
-- Broadcast privato, payload minimo, nessun segreto.
+- Broadcast privato su `game:{game_id}`, payload minimo senza stato autoritativo o segreti; receive autorizzato da membership Staff attiva o ownership Player del Game, senza policy client di invio.
 
 ## Privacy and recovery
 

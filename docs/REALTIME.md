@@ -2,17 +2,16 @@
 
 ## Topics
 
-- `game:{game_id}:player:{player_id}:out`: wake-up privato Player.
-- `game:{game_id}:staff:out`: wake-up privato Staff autorizzato.
+- `game:{game_id}`: wake-up privato condiviso per lo stato lifecycle/phase del Game.
 
-Producer: RPC/transaction dopo commit. Consumer: rispettivo terminale/control room. Payload: event type, scope minimo, schema version e invalidation hint; mai ruolo, clue, voto o dati personali.
+Producer: trigger PostgreSQL dopo una modifica reale a lifecycle o narrative phase. Consumer: Regia collegata. Evento `game_state_changed`; payload `{ "kind": "game_state_changed" }`, senza valori autoritativi.
 
 ## Flow
 
-RPC command commit → Broadcast → client deduplica → refetch snapshot autorizzato → aggiorna UI. Eventi persi non cambiano autorità: reconnect esegue refetch completo bounded.
+RPC command commit → Broadcast → Regia refetch `get_staff_game_overview()` → aggiorna UI. Eventi persi non cambiano autorità: reconnect/refetch iniziale riallinea lo snapshot.
 
 ## Authorization and resilience
 
-Private channels autorizzati secondo membership/Player ownership. Unsubscribe su unmount/game change/logout; una subscription per topic/key; backoff reconnect con limite e health indicator. Duplicati innocui tramite event id/client dedupe, ma command idempotency resta server-side.
+Il topic è private e il receive è autorizzato su `realtime.messages`: Staff attivo per ogni Game; Player corrente solo per il proprio Game. Non esiste policy client `INSERT`, quindi i client non possono broadcastare. Unsubscribe su unmount/game change/logout; una subscription per topic/key.
 
-Realtime comunica cambiamento, non stato. Fallback operativo: refresh manuale e refetch/polling limitato, da calibrare prima del live.
+Realtime comunica cambiamento, non stato. Nessun polling o Presence in questa milestone; il fallback è il refetch iniziale/azione manuale della Regia.

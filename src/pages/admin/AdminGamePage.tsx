@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageShell } from '../../components/common/PageShell'
 import { getAllowedLifecycleTransitions, getAllowedNarrativePhaseTransitions } from '../../domain/game/game.state-machine'
@@ -6,6 +6,7 @@ import type { GameLifecycle, NarrativePhase } from '../../domain/game/game.types
 import { isStaleLifecycleError, transitionGameLifecycle } from '../../domain/session/staff.game.command'
 import { isStaleNarrativePhaseError, transitionGameNarrativePhase } from '../../domain/session/staff.game.phase.command'
 import { getStaffGameOverview, type StaffGameOverview } from '../../domain/session/staff.game.read'
+import { subscribeToStaffGameState } from '../../domain/session/staff.game.realtime'
 
 const lifecycleLabels: Record<GameLifecycle, string> = {
   draft: 'Bozza', ready: 'Rendi pronta', checkin_open: 'Apri check-in', live: 'Avvia partita', paused: 'Metti in pausa', completed: 'Completa partita', aborted: 'Interrompi partita',
@@ -50,24 +51,28 @@ export default function AdminGamePage() {
   const [commandPending, setCommandPending] = useState(false)
   const [phaseCommandPending, setPhaseCommandPending] = useState(false)
 
-  async function loadOverview() {
+  const loadOverview = useCallback(async () => {
     if (!gameCode) return null
     const result = await getStaffGameOverview(gameCode)
     if (result.ok) { setOverview(result.value); setError(null) }
     else setError(result.error.userMessage)
     return result
-  }
+  }, [gameCode])
 
   useEffect(() => {
     if (!gameCode) return
     let active = true
+    let unsubscribe: () => void = () => undefined
     void getStaffGameOverview(gameCode).then((result) => {
       if (!active) return
-      if (result.ok) { setOverview(result.value); setError(null) }
-      else setError(result.error.userMessage)
+      if (result.ok) {
+        setOverview(result.value)
+        setError(null)
+        unsubscribe = subscribeToStaffGameState(result.value.id, () => { void loadOverview() })
+      } else setError(result.error.userMessage)
     })
-    return () => { active = false }
-  }, [gameCode])
+    return () => { active = false; unsubscribe() }
+  }, [gameCode, loadOverview])
 
   async function handleTransition(targetLifecycle: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return

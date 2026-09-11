@@ -19,7 +19,7 @@ flowchart LR
 
 ## Flussi e confini
 
-Commands passano da RPC con auth, target game, preconditions, idempotency key e transaction. Read usa snapshot RPC ridotti per audience. Broadcast contiene solo `event_type`, `game_id`/scope minimo, versione o invalidation hint non segreto. Player non riceve dati Staff; Admin non usa implicitamente altro game.
+Commands passano da RPC con auth, target game, preconditions, idempotency key e transaction. Read usa snapshot RPC ridotti per audience. Un trigger PostgreSQL emette su `game:{game_id}` il Broadcast privato `game_state_changed` solo dopo una reale modifica di lifecycle o narrative phase; il payload è solo un kind di invalidazione. Player non riceve dati Staff; Admin non usa implicitamente altro game.
 
 Scenario definisce contenuto; ScenarioVersion pubblicata congela contenuto; Game istanzia partita e punta a una versione. Nessuna dipendenza runtime da contenuti mutabili.
 

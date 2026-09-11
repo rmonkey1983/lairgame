@@ -4,10 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE') }))
+const { getStaffGameOverview, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
 vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
 vi.mock('../../domain/session/staff.game.phase.command', () => ({ transitionGameNarrativePhase, isStaleNarrativePhaseError }))
+vi.mock('../../domain/session/staff.game.realtime', () => ({ subscribeToStaffGameState }))
 
 function renderPage(path = '/admin/games/TEST01') { return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/admin/games/:gameCode" element={<AdminGamePage />} /><Route path="/admin/games" element={<p>games list</p>} /></Routes></MemoryRouter>) }
 
@@ -22,6 +23,28 @@ describe('AdminGamePage', () => {
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Torna alle partite/ })).toHaveAttribute('href', '/admin/games')
+    expect(subscribeToStaffGameState).toHaveBeenCalledWith('game-1', expect.any(Function))
+  })
+  it('refetches the authoritative overview when the game wake-up arrives', async () => {
+    let wakeUp!: () => void
+    getStaffGameOverview
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+      .mockResolvedValueOnce({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    subscribeToStaffGameState.mockImplementationOnce((_gameId: string, callback: () => void) => { wakeUp = callback; return vi.fn() })
+    renderPage()
+    await screen.findByText('Local Event')
+    wakeUp()
+    expect(await screen.findAllByText('live')).not.toHaveLength(0)
+    expect(getStaffGameOverview).toHaveBeenCalledTimes(2)
+  })
+  it('cleans the selected game subscription on unmount', async () => {
+    const unsubscribe = vi.fn()
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0 } })
+    subscribeToStaffGameState.mockReturnValueOnce(unsubscribe)
+    const { unmount } = renderPage()
+    await screen.findByText('Local Event')
+    unmount()
+    expect(unsubscribe).toHaveBeenCalledOnce()
   })
   it('shows safe not found and error states', async () => {
     getStaffGameOverview.mockResolvedValueOnce({ ok: false, error: { userMessage: 'Partita non trovata.' } })
