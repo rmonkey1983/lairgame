@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +7,7 @@ import PlayerShellPage from './PlayerShellPage'
 const getState = vi.hoisted(() => vi.fn())
 const subscribe = vi.hoisted(() => vi.fn(() => vi.fn()))
 const acknowledge = vi.hoisted(() => vi.fn())
-vi.mock('../../domain/player/player.state', () => ({ getMyPlayerState: getState }))
+vi.mock('../../domain/player/player.state', () => ({ getMyPlayerState: getState, isPlayerNotJoined: (result: { ok: boolean; error?: { code?: string } }) => !result.ok && result.error?.code === 'PLAYER_NOT_JOINED' }))
 vi.mock('../../domain/player/player.realtime', () => ({ subscribeToPlayerGameState: subscribe }))
 vi.mock('../../domain/player/player.role', () => ({ acknowledgeMyRole: acknowledge }))
 
@@ -138,5 +138,58 @@ describe('PlayerShellPage', () => {
     wakeUp()
     expect(await screen.findByRole('heading', { level: 2, name: 'Asta in corso' })).toBeInTheDocument()
     expect(screen.getByText('BBL Coin tavolo: 20')).toBeInTheDocument()
+  })
+
+  it('returns a reset Player to the join screen without changing Auth state', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'role_reveal', nickname: 'Player', table_number: 2, seat_number: 1, role: 'liar' } })
+      .mockResolvedValueOnce({ ok: false, error: { code: 'PLAYER_NOT_JOINED', userMessage: 'La tua presenza nella partita non è più attiva.' } })
+    let wakeUp!: () => void
+    subscribe.mockImplementationOnce((...args: unknown[]) => { wakeUp = args[1] as () => void; return vi.fn() })
+    renderShell()
+    expect(await screen.findByText('Bugiardo')).toBeInTheDocument()
+    wakeUp()
+    expect(await screen.findByText('join route')).toBeInTheDocument()
+    expect(screen.queryByText('Bugiardo')).not.toBeInTheDocument()
+  })
+
+  it('returns to Join on an initial PLAYER_NOT_JOINED result without signing out', async () => {
+    getState.mockResolvedValue({ ok: false, error: { code: 'PLAYER_NOT_JOINED', userMessage: 'La tua presenza nella partita non è più attiva.' } })
+    renderShell()
+    expect(await screen.findByText('join route')).toBeInTheDocument()
+    expect(screen.queryByText('Sei dentro.')).not.toBeInTheDocument()
+  })
+
+  it('ejects a Player after focus restores a missed reset', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 2, seat_number: 1, role: null } })
+      .mockResolvedValueOnce({ ok: false, error: { code: 'PLAYER_NOT_JOINED', userMessage: 'La tua presenza nella partita non è più attiva.' } })
+    renderShell()
+    expect(await screen.findByText('Sei dentro.')).toBeInTheDocument()
+    fireEvent(window, new Event('focus'))
+    expect(await screen.findByText('join route')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Sei dentro.')).not.toBeInTheDocument())
+  })
+
+  it('ejects a Player after visibility is restored', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 2, seat_number: 1, role: null } })
+      .mockResolvedValueOnce({ ok: false, error: { code: 'PLAYER_NOT_JOINED', userMessage: 'La tua presenza nella partita non è più attiva.' } })
+    renderShell()
+    expect(await screen.findByText('Sei dentro.')).toBeInTheDocument()
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+    fireEvent(document, new Event('visibilitychange'))
+    expect(await screen.findByText('join route')).toBeInTheDocument()
+    expect(screen.queryByText('Sei dentro.')).not.toBeInTheDocument()
+  })
+
+  it('keeps a joined Player in session on focus when membership remains', async () => {
+    const snapshot = { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 2, seat_number: 1, role: null }
+    getState.mockResolvedValue(snapshot ? { ok: true, value: snapshot } : undefined)
+    renderShell()
+    expect(await screen.findByText('Sei dentro.')).toBeInTheDocument()
+    fireEvent(window, new Event('focus'))
+    await waitFor(() => expect(getState).toHaveBeenCalledTimes(2))
+    expect(screen.getByText('Sei dentro.')).toBeInTheDocument()
   })
 })

@@ -1,27 +1,41 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageShell } from '../../components/common/PageShell'
-import { getMyPlayerState, type PlayerGameState } from '../../domain/player/player.state'
+import { getMyPlayerState, isPlayerNotJoined, type PlayerGameState } from '../../domain/player/player.state'
 import { acknowledgeMyRole } from '../../domain/player/player.role'
 import { subscribeToPlayerGameState } from '../../domain/player/player.realtime'
 
 export default function PlayerShellPage() {
   const { gameCode } = useParams()
+  const navigate = useNavigate()
   const [state, setState] = useState<PlayerGameState | null>(null)
   const [message, setMessage] = useState('Caricamento sessione…')
   const [ackPending, setAckPending] = useState(false)
   const [ackError, setAckError] = useState<string | null>(null)
 
+  const returnToJoin = useCallback(() => {
+    setState(null)
+    setAckError(null)
+    navigate(`/play/${gameCode}`, { replace: true })
+  }, [gameCode, navigate])
+
+  const applyAuthoritativeState = useCallback((result: Awaited<ReturnType<typeof getMyPlayerState>>) => {
+    if (isPlayerNotJoined(result)) {
+      returnToJoin()
+      return
+    }
+    if (result.ok && result.value) setState(result.value)
+    else if (!result.ok) setMessage(result.error.userMessage)
+  }, [returnToJoin])
+
   useEffect(() => {
     let active = true
     void getMyPlayerState(gameCode ?? '').then((result) => {
       if (!active) return
-      if (!result.ok) { setMessage(result.error.userMessage); return }
-      if (!result.value) { setMessage('Sessione non trovata. Ripeti il join.'); return }
-      setState(result.value)
+      applyAuthoritativeState(result)
     })
     return () => { active = false }
-  }, [gameCode])
+  }, [applyAuthoritativeState, gameCode])
 
   async function handleAcknowledge() {
     if (!gameCode || ackPending || state?.role_acknowledged) return
@@ -31,16 +45,29 @@ export default function PlayerShellPage() {
     if (!result.ok) setAckError(result.error.userMessage)
     else {
       const fresh = await getMyPlayerState(gameCode)
-      if (fresh.ok && fresh.value) setState(fresh.value)
+      applyAuthoritativeState(fresh)
     }
     setAckPending(false)
   }
 
   const refetch = useCallback(() => {
     void getMyPlayerState(gameCode ?? '').then((result) => {
-      if (result.ok && result.value) setState(result.value)
+      applyAuthoritativeState(result)
     })
-  }, [gameCode])
+  }, [applyAuthoritativeState, gameCode])
+
+  useEffect(() => {
+    const handleFocus = () => refetch()
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refetch()
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [refetch])
 
   useEffect(() => {
     if (!state?.game_id) return undefined
@@ -66,6 +93,6 @@ export default function PlayerShellPage() {
   }
 
   return <PageShell eyebrow="Player session" title={title}>
-    {state ? <div className="max-w-md">{renderContent()}<p className="mt-3 text-muted">{state.nickname}</p><p className="mt-1 text-muted">Tavolo {state.table_number} · Posto {state.seat_number}</p><p className="mt-1 text-muted">BBL Coin tavolo: {state.table_coin_balance}</p></div> : <div className="max-w-md"><p className="text-muted">{message}</p><Link className="action action-secondary mt-6 w-fit" to={`/play/${gameCode}`}>Torna al join</Link></div>}
+    {state ? <div className="player-session max-w-2xl"><div className="player-session-bar"><span className="player-live"><i aria-hidden="true" /> LIVE</span><span className="player-identity">{state.nickname}</span><span className="player-placement">{`Tavolo ${state.table_number} · Posto ${state.seat_number}`}</span></div><div className="player-stage">{renderContent()}</div><div className="player-session-footer"><span>Sessione attiva</span><span>{`BBL Coin tavolo: ${state.table_coin_balance}`}</span></div></div> : <div className="max-w-md"><p className="text-muted">{message}</p><Link className="action action-secondary mt-6 w-fit" to={`/play/${gameCode}`}>Torna al join</Link></div>}
   </PageShell>
 }

@@ -37,12 +37,13 @@ function mapError(error: { message: string }): Result<never> {
     AUTH_REQUIRED: { code: 'UNAUTHORIZED', userMessage: 'Sessione Player non disponibile.' },
     AUTH_ANONYMOUS_REQUIRED: { code: 'FORBIDDEN', userMessage: 'Questa sessione non può entrare come Player.' },
     GAME_NOT_FOUND: { code: 'NOT_FOUND', userMessage: 'Partita non trovata.' },
+    PLAYER_NOT_JOINED: { code: 'PLAYER_NOT_JOINED', userMessage: 'La tua presenza nella partita non è più attiva.' },
   }
   const mapped = messages[error.message]
   return fail(appError(mapped?.code ?? 'UNKNOWN', mapped?.userMessage ?? 'Impossibile caricare lo stato Player.', { cause: error, retryable: !mapped }))
 }
 
-export async function getMyPlayerState(gameCode: string): Promise<Result<PlayerGameState | null>> {
+export async function getMyPlayerState(gameCode: string): Promise<Result<PlayerGameState>> {
   if (!playerSupabaseClient) return fail(appError('TEMPORARY_UNAVAILABLE', 'Servizio di gioco non configurato.'))
   const session = await playerSupabaseClient.auth.getSession()
   if (session.error) return fail(appError('NETWORK', 'Impossibile verificare la sessione.', { cause: session.error, retryable: true }))
@@ -54,5 +55,11 @@ export async function getMyPlayerState(gameCode: string): Promise<Result<PlayerG
     logger.warn('Player state failed', { cause: error })
     return mapError(error)
   }
-  return ok(data?.[0] ? data[0] as PlayerGameState : null)
+  return data?.[0]
+    ? ok(data[0] as PlayerGameState)
+    : mapError({ message: 'PLAYER_NOT_JOINED' })
+}
+
+export function isPlayerNotJoined(result: Result<PlayerGameState>): boolean {
+  return !result.ok && result.error.code === 'PLAYER_NOT_JOINED'
 }

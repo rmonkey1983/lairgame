@@ -35,6 +35,7 @@ export type StaffGameOverview = {
   comparison_body: string | null
   pressure_title: string | null
   pressure_body: string | null
+  reset_enabled: boolean
 }
 
 export type StaffGameRosterPlayer = {

@@ -447,6 +447,7 @@ export type Database = {
           id: string
           lifecycle: string
           narrative_phase: string
+          reset_enabled: boolean
           scenario_version_id: string | null
           updated_at: string
         }
@@ -457,6 +458,7 @@ export type Database = {
           id?: string
           lifecycle?: string
           narrative_phase?: string
+          reset_enabled?: boolean
           scenario_version_id?: string | null
           updated_at?: string
         }
@@ -467,6 +469,7 @@ export type Database = {
           id?: string
           lifecycle?: string
           narrative_phase?: string
+          reset_enabled?: boolean
           scenario_version_id?: string | null
           updated_at?: string
         }
@@ -1008,6 +1011,7 @@ export type Database = {
           player_count: number
           pressure_body: string
           pressure_title: string
+          reset_enabled: boolean
           scenario_title: string
           scenario_version_number: number
           starts_at: string
@@ -1022,6 +1026,17 @@ export type Database = {
           source_table_number: number
           target_table_number: number
           title: string
+        }[]
+      }
+      reset_game_for_testing: {
+        Args: { command_id: string; game_code: string }
+        Returns: {
+          command_id: string
+          game_code: string
+          game_id: string
+          lifecycle: string
+          narrative_phase: string
+          reset_at: string
         }[]
       }
       get_staff_game_roles: {

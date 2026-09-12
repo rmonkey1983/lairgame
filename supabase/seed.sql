@@ -7,14 +7,15 @@ values (
   'scheduled'
 );
 
-insert into public.games (id, event_id, code, lifecycle, narrative_phase, scenario_version_id)
+insert into public.games (id, event_id, code, lifecycle, narrative_phase, scenario_version_id, reset_enabled)
 values (
   'a0000000-0000-0000-0000-000000000050',
   'e0000000-0000-0000-0000-000000000050',
   'TEST01',
   'checkin_open',
   'lobby',
-  'e0000000-0000-0000-0000-000000000015'
+  'e0000000-0000-0000-0000-000000000015',
+  true
 );
 
 insert into public.game_tables (id, game_id, table_number, label)

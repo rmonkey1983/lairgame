@@ -7,6 +7,7 @@ export type AppErrorCode =
   | 'CONFLICT'
   | 'NETWORK'
   | 'TEMPORARY_UNAVAILABLE'
+  | 'PLAYER_NOT_JOINED'
 
 export type AppError = {
   code: AppErrorCode

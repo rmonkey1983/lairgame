@@ -18,6 +18,7 @@ import {
   transitionGameNarrativePhase,
 } from "../../domain/session/staff.game.phase.command";
 import { assignGameRoles } from "../../domain/session/staff.game.roles.command";
+import { resetGameForTesting } from "../../domain/session/staff.game.reset.command";
 import { closeGameAuction, closeGameAuctionNoSale, openGameAuction, recordGameAuctionBid } from "../../domain/session/staff.game.auction.command";
 import {
   getStaffGameOverview,
@@ -103,6 +104,7 @@ export default function AdminGamePage() {
   const [commandPending, setCommandPending] = useState(false);
   const [phaseCommandPending, setPhaseCommandPending] = useState(false);
   const [roleCommandPending, setRoleCommandPending] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
   const loadOverview = useCallback(async () => {
     if (!gameCode) return null;
     const r = await getStaffGameOverview(gameCode);
@@ -241,6 +243,18 @@ export default function AdminGamePage() {
     if (r.ok) setNotice("Ruoli assegnati.");
     else setError(r.error.userMessage);
     setRoleCommandPending(false);
+  }
+  async function handleResetGame() {
+    if (!gameCode || resetPending || !overview?.reset_enabled) return;
+    if (!window.confirm("Reset TEST01?\nTutti i partecipanti verranno espulsi dalla partita.\nLo stato del game verrà azzerato e sarà pronto per una nuova partita.")) return;
+    setResetPending(true);
+    setError(null);
+    const r = await resetGameForTesting(gameCode);
+    if (r.ok) {
+      await Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
+      setNotice("Partita resettata.");
+    } else setError(r.error.userMessage);
+    setResetPending(false);
   }
   async function handleAuctionCommand(command: () => Promise<unknown>) {
     if (auctionPending) return;
@@ -639,6 +653,15 @@ export default function AdminGamePage() {
                   </p>
                 )}
               </section>
+              {overview.reset_enabled && (
+                <section className="mt-10 border-t border-danger pt-6" aria-labelledby="danger-zone-title">
+                  <h2 id="danger-zone-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-danger">DANGER ZONE</h2>
+                  <p className="mt-2 text-sm text-muted">Solo per partite di sviluppo e test.</p>
+                  <button className="action action-secondary mt-5" type="button" disabled={resetPending} onClick={() => void handleResetGame()}>
+                    {resetPending ? "Reset in corso…" : "Reset partita test"}
+                  </button>
+                </section>
+              )}
             </>
           )}
         </div>
