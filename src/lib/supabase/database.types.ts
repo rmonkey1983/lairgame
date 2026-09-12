@@ -392,6 +392,8 @@ export type Database = {
           briefing_body: string
           briefing_title: string
           created_at: string
+          discovery_body: string
+          discovery_title: string
           id: string
           published_at: string | null
           scenario_id: string
@@ -402,6 +404,8 @@ export type Database = {
           briefing_body: string
           briefing_title: string
           created_at?: string
+          discovery_body: string
+          discovery_title: string
           id?: string
           published_at?: string | null
           scenario_id: string
@@ -412,6 +416,8 @@ export type Database = {
           briefing_body?: string
           briefing_title?: string
           created_at?: string
+          discovery_body?: string
+          discovery_title?: string
           id?: string
           published_at?: string | null
           scenario_id?: string
@@ -515,6 +521,8 @@ export type Database = {
         Returns: {
           briefing_body: string
           briefing_title: string
+          discovery_body: string
+          discovery_title: string
           game_id: string
           lifecycle: string
           narrative_phase: string
@@ -541,6 +549,8 @@ export type Database = {
           briefing_title: string
           code: string
           created_at: string
+          discovery_body: string
+          discovery_title: string
           event_name: string
           id: string
           lifecycle: string

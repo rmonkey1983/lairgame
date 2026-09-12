@@ -29,6 +29,8 @@ export type StaffGameOverview = {
   scenario_version_number: number | null
   briefing_title: string | null
   briefing_body: string | null
+  discovery_title: string | null
+  discovery_body: string | null
 }
 
 export type StaffGameRosterPlayer = {

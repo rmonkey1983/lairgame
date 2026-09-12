@@ -270,6 +270,13 @@ export default function AdminGamePage() {
                   <p className="mt-4 whitespace-pre-wrap leading-7">{overview.briefing_body}</p>
                 </section>
               )}
+              {overview.narrative_phase === "discovery" && overview.discovery_title && (
+                <section className="mt-6 border border-border p-4" aria-labelledby="staff-discovery-title">
+                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Scoperta</p>
+                  <h2 id="staff-discovery-title" className="mt-2 text-2xl font-semibold text-primary">{overview.discovery_title}</h2>
+                  <p className="mt-4 whitespace-pre-wrap leading-7">{overview.discovery_body}</p>
+                </section>
+              )}
               <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2">
                 <div>
                   <dt className="text-sm text-muted">Lifecycle</dt>

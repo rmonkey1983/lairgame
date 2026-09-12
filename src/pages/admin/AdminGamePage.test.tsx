@@ -38,6 +38,13 @@ describe('AdminGamePage', () => {
     expect(await screen.findAllByText('live')).not.toHaveLength(0)
     expect(getStaffGameOverview).toHaveBeenCalledTimes(2)
   })
+
+  it('shows the authoritative Discovery cue for Regia', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'discovery', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0, scenario_title: 'Scenario', scenario_version_number: 1, discovery_title: 'Guardatevi intorno', discovery_body: 'Parlate al vostro tavolo.' } })
+    renderPage()
+    expect(await screen.findByRole('heading', { name: 'Guardatevi intorno' })).toBeInTheDocument()
+    expect(screen.getByText('Parlate al vostro tavolo.')).toBeInTheDocument()
+  })
   it('renders occupied and empty seats across the selected tables', async () => {
     getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 2 } })
     getStaffGameRoster.mockResolvedValue({ ok: true, value: [

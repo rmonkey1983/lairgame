@@ -16,6 +16,8 @@ export type PlayerGameState = {
   scenario_title: string | null
   briefing_title: string | null
   briefing_body: string | null
+  discovery_title: string | null
+  discovery_body: string | null
 }
 
 function mapError(error: { message: string }): Result<never> {
