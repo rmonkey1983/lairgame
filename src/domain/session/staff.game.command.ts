@@ -30,6 +30,7 @@ function mapCommandError(error: { message: string }): Result<LifecycleTransition
     STAFF_ACCESS_DENIED: { code: 'FORBIDDEN', message: 'Accesso Regia non autorizzato.' },
     GAME_NOT_FOUND: { code: 'NOT_FOUND', message: 'Partita non trovata.' },
     STALE_GAME_STATE: { code: 'CONFLICT', message: 'Lo stato della partita è cambiato. Dati aggiornati.' },
+    GAME_NOT_READY_TO_COMPLETE: { code: 'CONFLICT', message: 'La partita può essere completata solo dopo la rivelazione finale.' },
     INVALID_TRANSITION: { code: 'CONFLICT', message: 'Transizione lifecycle non consentita.' },
     CONFLICT: { code: 'CONFLICT', message: 'Comando non compatibile con lo stato corrente.' },
     INVALID_LIFECYCLE: { code: 'VALIDATION', message: 'Lifecycle non valido.' },

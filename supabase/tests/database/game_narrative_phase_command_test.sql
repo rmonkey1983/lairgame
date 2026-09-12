@@ -79,6 +79,10 @@ select is((select phase from public.transition_game_narrative_phase('TEST01', 'b
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'discovery', 'comparison', '70000000-0000-0000-0000-000000000074')), 'comparison', 'discovery advances to comparison');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'comparison', 'pressure', '70000000-0000-0000-0000-000000000075')), 'pressure', 'comparison advances to pressure');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'pressure', 'auction', '70000000-0000-0000-0000-000000000076')), 'auction', 'pressure advances to auction');
+reset role;
+insert into public.game_auctions (game_id, scenario_auction_item_id, status, closed_at)
+values ('a0000000-0000-0000-0000-000000000050', 'f0000000-0000-0000-0000-000000000211', 'no_sale', now());
+set local role authenticated;
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'auction', 'deliberation', '70000000-0000-0000-0000-000000000077')), 'deliberation', 'auction advances to deliberation');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'deliberation', 'final_vote', '70000000-0000-0000-0000-000000000078')), 'final_vote', 'deliberation advances to final vote');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'final_vote', 'reveal', '70000000-0000-0000-0000-000000000079')), 'reveal', 'final vote advances to reveal');

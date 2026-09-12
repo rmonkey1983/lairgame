@@ -18,6 +18,7 @@ import {
   transitionGameNarrativePhase,
 } from "../../domain/session/staff.game.phase.command";
 import { assignGameRoles } from "../../domain/session/staff.game.roles.command";
+import { closeGameAuction, closeGameAuctionNoSale, openGameAuction, recordGameAuctionBid } from "../../domain/session/staff.game.auction.command";
 import {
   getStaffGameOverview,
   getStaffGameRoster,
@@ -25,6 +26,7 @@ import {
   getStaffGameComparisons,
   getStaffGamePressureRoutes,
   getStaffGameCoins,
+  getStaffGameAuction,
   getStaffGameRoles,
   type StaffGameOverview,
   type StaffGameRosterPlayer,
@@ -33,6 +35,7 @@ import {
   type StaffGameComparison,
   type StaffGamePressureRoute,
   type StaffGameTableCoins,
+  type StaffGameAuction,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
@@ -91,6 +94,10 @@ export default function AdminGamePage() {
   const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
   const [pressureRoutes, setPressureRoutes] = useState<StaffGamePressureRoute[] | null>(null);
   const [tableCoins, setTableCoins] = useState<StaffGameTableCoins[] | null>(null);
+  const [auction, setAuction] = useState<StaffGameAuction | null>(null);
+  const [auctionTable, setAuctionTable] = useState(1);
+  const [auctionAmount, setAuctionAmount] = useState(1);
+  const [auctionPending, setAuctionPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -147,6 +154,13 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
+  const loadAuction = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffGameAuction(gameCode);
+    if (r.ok) setAuction(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -159,16 +173,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes, loadTableCoins]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes, loadTableCoins, loadAuction]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -228,8 +242,16 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     setRoleCommandPending(false);
   }
+  async function handleAuctionCommand(command: () => Promise<unknown>) {
+    if (auctionPending) return;
+    setAuctionPending(true); setError(null);
+    const result = await command();
+    if (result && typeof result === 'object' && 'ok' in result && !(result as { ok: boolean }).ok) setError((result as unknown as { error: { userMessage: string } }).error.userMessage);
+    await Promise.all([loadAuction(), loadTableCoins()]);
+    setAuctionPending(false);
+  }
   const allowed = overview
-    ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle)
+    ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle).filter((target) => target !== "completed" || overview.narrative_phase === "reveal")
     : [];
   const narrativeAllowed = overview
     ? getAllowedNarrativePhaseTransitions(
@@ -252,6 +274,7 @@ export default function AdminGamePage() {
     overview?.lifecycle === "live" &&
     overview.narrative_phase === "lobby" &&
     !rolesAssigned;
+  const auctionSettled = auction?.status === "closed" || auction?.status === "no_sale";
   return (
     <PageShell eyebrow="Control Room · game context" title="Regia">
       <div className="max-w-2xl">
@@ -347,6 +370,24 @@ export default function AdminGamePage() {
                   <div className="mt-6 grid gap-4">
                     {(pressureRoutes ?? []).map((route) => <article key={route.source_table_number} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><h3 className="font-semibold">Tavolo {route.source_table_number} → Tavolo {route.target_table_number}</h3><p className="mt-1 font-semibold text-primary">{route.title}</p><p className="mt-1 text-sm leading-6">{route.instruction}</p></article>)}
                   </div>
+                </section>
+              )}
+              {overview.narrative_phase === "auction" && auction && (
+                <section className="mt-6 border border-border p-4" aria-labelledby="staff-auction-title">
+                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Asta</p>
+                  <h2 id="staff-auction-title" className="mt-2 text-2xl font-semibold text-primary">{auction.item_title}</h2>
+                  <p className="mt-4 whitespace-pre-wrap leading-7">{auction.item_teaser}</p>
+                  {auction.status === "not_open" ? <button className="action mt-6" type="button" disabled={auctionPending} onClick={() => void handleAuctionCommand(() => openGameAuction(gameCode ?? ""))}>Apri asta</button> : auction.status === "open" ? <>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                      <label className="text-sm">Tavolo<select className="mt-1 block w-full border border-border bg-surface p-2" value={auctionTable} onChange={(event) => setAuctionTable(Number(event.target.value))}>{[1,2,3,4,5].map((table) => <option key={table} value={table}>{table}</option>)}</select></label>
+                      <label className="text-sm">Offerta<input className="mt-1 block w-full border border-border bg-surface p-2" type="number" min="1" value={auctionAmount} onChange={(event) => setAuctionAmount(Number(event.target.value))} /></label>
+                      <button className="action self-end" type="button" disabled={auctionPending} onClick={() => void handleAuctionCommand(() => recordGameAuctionBid(gameCode ?? "", auctionTable, auctionAmount))}>Registra offerta</button>
+                    </div>
+                    <p className="mt-5 font-semibold">Offerta massima: {auction.current_highest_bid ?? "—"}{auction.current_highest_table_number ? ` · Tavolo ${auction.current_highest_table_number}` : ""}</p>
+                    <ul className="mt-4 grid gap-2" aria-label="Offerte accettate">{auction.bids.map((bid, index) => <li key={`${bid.created_at}-${index}`} className="border-t border-border pt-2 text-sm">Tavolo {bid.table_number} — {bid.amount}</li>)}</ul>
+                    <div className="mt-6 flex flex-wrap gap-3"><button className="action" type="button" disabled={auctionPending || auction.bids.length === 0} onClick={() => void handleAuctionCommand(() => closeGameAuction(gameCode ?? ""))}>Chiudi asta</button><button className="action action-secondary" type="button" disabled={auctionPending || auction.bids.length > 0} onClick={() => void handleAuctionCommand(() => closeGameAuctionNoSale(gameCode ?? ""))}>Chiudi senza vendita</button></div>
+                  </> : <p className="mt-5 font-semibold">Stato: {auction.status === "closed" ? `Chiusa · Tavolo ${auction.winning_table_number} · ${auction.winning_bid}` : "Nessuna vendita"}</p>}
+                  {auction.status !== "open" && auctionSettled && <p className="mt-3 text-sm text-muted">Premio riservato alla Regia; non è ancora mostrato al Player.</p>}
                 </section>
               )}
               <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2">
@@ -571,7 +612,8 @@ export default function AdminGamePage() {
                         phaseCommandPending ||
                         overview.lifecycle !== "live" ||
                         (nextPhase === "role_reveal" && !rolesAssigned) ||
-                        (nextPhase === "briefing" && !acknowledgementsComplete)
+                        (nextPhase === "briefing" && !acknowledgementsComplete) ||
+                        (nextPhase === "deliberation" && !auctionSettled)
                       }
                       onClick={() => void handlePhase(nextPhase)}
                     >
@@ -589,6 +631,7 @@ export default function AdminGamePage() {
                     {nextPhase === "briefing" && !acknowledgementsComplete && (
                       <p className="mt-3 text-sm text-muted">Attendi la conferma di tutti i Player.</p>
                     )}
+                    {nextPhase === "deliberation" && !auctionSettled && <p className="mt-3 text-sm text-muted">Chiudi l’asta prima di avanzare.</p>}
                   </>
                 ) : (
                   <p className="mt-5 text-sm text-muted">

@@ -121,4 +121,22 @@ describe('PlayerShellPage', () => {
     expect(screen.queryByText('BBL Coin tavolo: 20')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
+
+  it('shows the neutral auction wait state without role or bid controls', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'auction', nickname: 'Player', table_number: 2, seat_number: 1, role: 'liar', table_coin_balance: 20 } })
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'auction', nickname: 'Player', table_number: 2, seat_number: 1, role: 'liar', table_coin_balance: 20 } })
+    let wakeUp!: () => void
+    subscribe.mockImplementationOnce((...args: unknown[]) => { wakeUp = args[1] as () => void; return vi.fn() })
+    renderShell()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Asta in corso' })).toBeInTheDocument()
+    expect(screen.getByText('Segui la Regia e resta nel gioco.')).toBeInTheDocument()
+    expect(screen.getByText('BBL Coin tavolo: 20')).toBeInTheDocument()
+    expect(screen.queryByText('Bugiardo')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Offerta massima|Offerte accettate|Premio/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    wakeUp()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Asta in corso' })).toBeInTheDocument()
+    expect(screen.getByText('BBL Coin tavolo: 20')).toBeInTheDocument()
+  })
 })
