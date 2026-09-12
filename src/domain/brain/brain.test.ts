@@ -6,9 +6,9 @@ import { validateBrainAction } from './brain.validator'
 import type { BrainPlayer, ScenarioTruth } from './brain.types'
 
 const players: BrainPlayer[] = [
-  { playerId: 'p1', socialStyle: 'observer', exposureLevel: 'low', participationLevel: 'medium', arrivedWithPlayerIds: [], activityCount: 1 },
-  { playerId: 'p2', socialStyle: 'expressive', exposureLevel: 'high', participationLevel: 'high', arrivedWithPlayerIds: [], activityCount: 1 },
-  { playerId: 'p3', socialStyle: 'balanced', exposureLevel: 'medium', participationLevel: 'medium', arrivedWithPlayerIds: [], activityCount: 1 },
+  { playerId: 'p1', socialStyle: 'observer', exposureLevel: 'low', participationLevel: 'medium', arrivedWithPlayerIds: [], strategyPreference: 'mixed', sources: { socialStyle: 'derived', exposureLevel: 'derived', participationLevel: 'derived', strategyPreference: 'defaulted' }, activityCount: 1 },
+  { playerId: 'p2', socialStyle: 'expressive', exposureLevel: 'high', participationLevel: 'high', arrivedWithPlayerIds: [], strategyPreference: 'mixed', sources: { socialStyle: 'derived', exposureLevel: 'derived', participationLevel: 'derived', strategyPreference: 'defaulted' }, activityCount: 1 },
+  { playerId: 'p3', socialStyle: 'balanced', exposureLevel: 'medium', participationLevel: 'medium', arrivedWithPlayerIds: [], strategyPreference: 'mixed', sources: { socialStyle: 'derived', exposureLevel: 'derived', participationLevel: 'derived', strategyPreference: 'defaulted' }, activityCount: 1 },
 ]
 const truth: ScenarioTruth = { liarPlayerId: 'p2', facts: [], lies: [] }
 

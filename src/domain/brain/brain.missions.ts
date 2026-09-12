@@ -1,4 +1,4 @@
-import type { GamePhase, MissionTemplate, MissionType, SocialStyle } from './brain.types'
+import type { ExposureLevel, GamePhase, MissionTemplate, MissionType, SocialStyle } from './brain.types'
 
 const socialProfiles: SocialStyle[] = ['observer', 'balanced', 'expressive']
 const interactivePhases: GamePhase[] = ['TRUST', 'INVESTIGATION', 'DOUBT', 'FINAL_THEORY']
@@ -20,7 +20,7 @@ export function getMissionTemplate(type: MissionType): MissionTemplate | undefin
   return MISSION_TEMPLATES.find((template) => template.type === type)
 }
 
-export function isMissionCompatible(template: MissionTemplate, phase: GamePhase, socialStyle: SocialStyle, exposureLevel: string): boolean {
+export function isMissionCompatible(template: MissionTemplate, phase: GamePhase, socialStyle: SocialStyle, exposureLevel: ExposureLevel): boolean {
   return template.allowedPhases.includes(phase)
     && template.compatibleProfiles.includes(socialStyle)
     && (template.exposureLevel === 'low' || exposureLevel !== 'low')

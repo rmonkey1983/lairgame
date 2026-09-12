@@ -14,6 +14,15 @@ export type GamePhase =
 export type SocialStyle = 'observer' | 'balanced' | 'expressive'
 export type ExposureLevel = 'low' | 'medium' | 'high'
 export type ParticipationLevel = 'low' | 'medium' | 'high'
+export type StrategyPreference = 'social' | 'analytical' | 'mixed'
+export type ProfileValueSource = 'derived' | 'defaulted'
+
+export type PlayerProfileSources = {
+  socialStyle: ProfileValueSource
+  exposureLevel: ProfileValueSource
+  participationLevel: ProfileValueSource
+  strategyPreference: ProfileValueSource
+}
 
 export type PlayerGameProfile = {
   playerId: string
@@ -21,6 +30,8 @@ export type PlayerGameProfile = {
   exposureLevel: ExposureLevel
   participationLevel: ParticipationLevel
   arrivedWithPlayerIds: string[]
+  strategyPreference: StrategyPreference
+  sources: PlayerProfileSources
 }
 
 export type BrainPlayer = PlayerGameProfile & {
