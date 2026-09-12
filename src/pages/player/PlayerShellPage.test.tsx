@@ -95,4 +95,13 @@ describe('PlayerShellPage', () => {
     expect(await screen.findByText('Sessione Player non disponibile.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Torna al join' })).toHaveAttribute('href', '/play/JOIN-ONE')
   })
+
+  it('shows only the authoritative comparison route and own clue after the wake-up', async () => {
+    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'comparison', nickname: 'Player', table_number: 3, seat_number: 1, role: 'investigator', role_acknowledged: true, scenario_title: 'Scenario', comparison_title: 'Confrontate i frammenti', comparison_body: 'Parlate con il tavolo indicato.', clue_title: 'Il biglietto', clue_body: 'Il vostro frammento.', comparison_target_table_number: 4, comparison_instruction: 'Confrontate a voce il vostro frammento con il Tavolo 4.' } })
+    renderShell()
+    expect(await screen.findByRole('heading', { name: 'Confrontate i frammenti' })).toBeInTheDocument()
+    expect(screen.getByText('Tavolo 4')).toBeInTheDocument()
+    expect(screen.getByText('Il vostro frammento')).toBeInTheDocument()
+    expect(screen.queryByText('Tavolo 1')).not.toBeInTheDocument()
+  })
 })

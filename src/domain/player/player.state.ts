@@ -20,6 +20,10 @@ export type PlayerGameState = {
   discovery_body: string | null
   clue_title: string | null
   clue_body: string | null
+  comparison_title: string | null
+  comparison_body: string | null
+  comparison_target_table_number: number | null
+  comparison_instruction: string | null
 }
 
 function mapError(error: { message: string }): Result<never> {

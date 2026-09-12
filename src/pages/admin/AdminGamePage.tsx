@@ -22,11 +22,13 @@ import {
   getStaffGameOverview,
   getStaffGameRoster,
   getStaffGameClues,
+  getStaffGameComparisons,
   getStaffGameRoles,
   type StaffGameOverview,
   type StaffGameRosterPlayer,
   type StaffGameRole,
   type StaffGameClue,
+  type StaffGameComparison,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
@@ -82,6 +84,7 @@ export default function AdminGamePage() {
   const [roster, setRoster] = useState<StaffGameRosterPlayer[] | null>(null);
   const [roles, setRoles] = useState<StaffGameRole[] | null>(null);
   const [clues, setClues] = useState<StaffGameClue[] | null>(null);
+  const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -117,6 +120,13 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
+  const loadComparisons = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffGameComparisons(gameCode);
+    if (r.ok) setComparisons(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -129,16 +139,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -296,6 +306,16 @@ export default function AdminGamePage() {
                       const clue = clues?.find((item) => item.table_number === index + 1);
                       return <article key={index + 1} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><h3 className="font-semibold">Tavolo {index + 1}</h3>{clue ? <><p className="mt-1 font-semibold text-primary">{clue.title}</p><p className="mt-1 whitespace-pre-wrap text-sm leading-6">{clue.body}</p></> : <p className="mt-1 text-sm text-muted">Nessun frammento disponibile.</p>}</article>;
                     })}
+                  </div>
+                </section>
+              )}
+              {overview.narrative_phase === "comparison" && overview.comparison_title && (
+                <section className="mt-6 border border-border p-4" aria-labelledby="staff-comparison-title">
+                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Confronto</p>
+                  <h2 id="staff-comparison-title" className="mt-2 text-2xl font-semibold text-primary">{overview.comparison_title}</h2>
+                  <p className="mt-4 whitespace-pre-wrap leading-7">{overview.comparison_body}</p>
+                  <div className="mt-6 grid gap-4">
+                    {(comparisons ?? []).map((route) => <article key={route.source_table_number} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><h3 className="font-semibold">Tavolo {route.source_table_number} → Tavolo {route.target_table_number}</h3><p className="mt-1 text-sm leading-6">{route.instruction}</p></article>)}
                   </div>
                 </section>
               )}

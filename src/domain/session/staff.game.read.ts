@@ -31,6 +31,8 @@ export type StaffGameOverview = {
   briefing_body: string | null
   discovery_title: string | null
   discovery_body: string | null
+  comparison_title: string | null
+  comparison_body: string | null
 }
 
 export type StaffGameRosterPlayer = {
@@ -54,6 +56,12 @@ export type StaffGameClue = {
   table_number: number
   title: string
   body: string
+}
+
+export type StaffGameComparison = {
+  source_table_number: number
+  target_table_number: number
+  instruction: string
 }
 
 function unavailable<T>(): Result<T> {
@@ -106,5 +114,12 @@ export async function getStaffGameClues(gameCode: string): Promise<Result<StaffG
   if (!staffSupabaseClient) return unavailable<StaffGameClue[]>()
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_clues', { game_code: gameCode })
   if (error) { logger.warn('Staff game clues failed', { cause: error }); return mapReadError(error) }
+  return ok(data ?? [])
+}
+
+export async function getStaffGameComparisons(gameCode: string): Promise<Result<StaffGameComparison[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGameComparison[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_comparisons', { game_code: gameCode })
+  if (error) { logger.warn('Staff game comparisons failed', { cause: error }); return mapReadError(error) }
   return ok(data ?? [])
 }

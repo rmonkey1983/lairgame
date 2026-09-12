@@ -422,10 +422,47 @@ export type Database = {
           },
         ]
       }
+      scenario_table_comparisons: {
+        Row: {
+          created_at: string
+          id: string
+          instruction: string
+          scenario_version_id: string
+          source_table_number: number
+          target_table_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instruction: string
+          scenario_version_id: string
+          source_table_number: number
+          target_table_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instruction?: string
+          scenario_version_id?: string
+          source_table_number?: number
+          target_table_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_table_comparisons_scenario_version_id_fkey"
+            columns: ["scenario_version_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenario_versions: {
         Row: {
           briefing_body: string
           briefing_title: string
+          comparison_body: string
+          comparison_title: string
           created_at: string
           discovery_body: string
           discovery_title: string
@@ -438,6 +475,8 @@ export type Database = {
         Insert: {
           briefing_body: string
           briefing_title: string
+          comparison_body: string
+          comparison_title: string
           created_at?: string
           discovery_body: string
           discovery_title: string
@@ -450,6 +489,8 @@ export type Database = {
         Update: {
           briefing_body?: string
           briefing_title?: string
+          comparison_body?: string
+          comparison_title?: string
           created_at?: string
           discovery_body?: string
           discovery_title?: string
@@ -558,6 +599,10 @@ export type Database = {
           briefing_title: string
           clue_body: string
           clue_title: string
+          comparison_body: string
+          comparison_instruction: string
+          comparison_target_table_number: number
+          comparison_title: string
           discovery_body: string
           discovery_title: string
           game_id: string
@@ -587,12 +632,22 @@ export type Database = {
           title: string
         }[]
       }
+      get_staff_game_comparisons: {
+        Args: { game_code: string }
+        Returns: {
+          instruction: string
+          source_table_number: number
+          target_table_number: number
+        }[]
+      }
       get_staff_game_overview: {
         Args: { p_game_code: string }
         Returns: {
           briefing_body: string
           briefing_title: string
           code: string
+          comparison_body: string
+          comparison_title: string
           created_at: string
           discovery_body: string
           discovery_title: string
