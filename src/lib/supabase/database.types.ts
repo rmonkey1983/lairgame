@@ -387,6 +387,41 @@ export type Database = {
           },
         ]
       }
+      scenario_table_clues: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          scenario_version_id: string
+          table_number: number
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          scenario_version_id: string
+          table_number: number
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          scenario_version_id?: string
+          table_number?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_table_clues_scenario_version_id_fkey"
+            columns: ["scenario_version_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenario_versions: {
         Row: {
           briefing_body: string
@@ -521,6 +556,8 @@ export type Database = {
         Returns: {
           briefing_body: string
           briefing_title: string
+          clue_body: string
+          clue_title: string
           discovery_body: string
           discovery_title: string
           game_id: string
@@ -540,6 +577,14 @@ export type Database = {
           active: boolean
           display_name: string
           staff_member_id: string
+        }[]
+      }
+      get_staff_game_clues: {
+        Args: { game_code: string }
+        Returns: {
+          body: string
+          table_number: number
+          title: string
         }[]
       }
       get_staff_game_overview: {

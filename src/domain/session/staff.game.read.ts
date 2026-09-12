@@ -50,6 +50,12 @@ export type StaffGameRole = {
   role_acknowledged: boolean
 }
 
+export type StaffGameClue = {
+  table_number: number
+  title: string
+  body: string
+}
+
 function unavailable<T>(): Result<T> {
   return fail(appError('TEMPORARY_UNAVAILABLE', 'Dati Regia non disponibili.', { retryable: false }))
 }
@@ -94,4 +100,11 @@ export async function getStaffGameRoles(gameCode: string): Promise<Result<StaffG
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_roles', { game_code: gameCode })
   if (error) { logger.warn('Staff game roles failed', { cause: error }); return mapReadError(error) }
   return ok((data ?? []) as StaffGameRole[])
+}
+
+export async function getStaffGameClues(gameCode: string): Promise<Result<StaffGameClue[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGameClue[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_clues', { game_code: gameCode })
+  if (error) { logger.warn('Staff game clues failed', { cause: error }); return mapReadError(error) }
+  return ok(data ?? [])
 }

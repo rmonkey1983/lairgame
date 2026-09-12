@@ -3,7 +3,7 @@ select plan(9);
 
 select is((select discovery_title from public.scenario_versions where id = 'e0000000-0000-0000-0000-000000000015'), 'Guardatevi intorno', 'Discovery title belongs to the selected scenario version');
 select is((select discovery_body from public.scenario_versions where id = 'e0000000-0000-0000-0000-000000000015'), 'Alzate gli occhi dal telefono e parlate con chi è al vostro tavolo.', 'Discovery body is deterministic and scenario-driven');
-select ok(pg_get_function_result('public.get_my_player_state(text)'::regprocedure) !~* 'scenario_id|version_number|status|published_at|secret|clue|mission', 'Player projection omits hidden scenario fields');
+select ok(pg_get_function_result('public.get_my_player_state(text)'::regprocedure) !~* 'scenario_id|version_number|status|published_at|secret|mission', 'Player projection omits hidden scenario fields');
 select throws_ok($$update public.scenario_versions set discovery_body = 'changed' where id = 'e0000000-0000-0000-0000-000000000015'$$, 'P0001', 'PUBLISHED_SCENARIO_IMMUTABLE', 'published scenario remains immutable');
 
 insert into auth.users (id, aud, role, email, is_anonymous)

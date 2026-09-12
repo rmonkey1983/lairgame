@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, assignGameRoles, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), getStaffGameRoles: vi.fn(() => Promise.resolve({ ok: true, value: [] })), assignGameRoles: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
-vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster, getStaffGameRoles }))
+const { getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues, assignGameRoles, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), getStaffGameRoles: vi.fn(() => Promise.resolve({ ok: true, value: [] }),), getStaffGameClues: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ table_number: number; title: string; body: string }> })), assignGameRoles: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
+vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues }))
 vi.mock('../../domain/session/staff.game.roles.command', () => ({ assignGameRoles }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
 vi.mock('../../domain/session/staff.game.phase.command', () => ({ transitionGameNarrativePhase, isStaleNarrativePhaseError }))
@@ -41,9 +41,12 @@ describe('AdminGamePage', () => {
 
   it('shows the authoritative Discovery cue for Regia', async () => {
     getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'discovery', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 0, scenario_title: 'Scenario', scenario_version_number: 1, discovery_title: 'Guardatevi intorno', discovery_body: 'Parlate al vostro tavolo.' } })
+    getStaffGameClues.mockResolvedValue({ ok: true, value: [{ table_number: 1, title: 'Il bicchiere', body: 'Frammento uno.' }, { table_number: 2, title: 'La sedia vuota', body: 'Frammento due.' }] })
     renderPage()
     expect(await screen.findByRole('heading', { name: 'Guardatevi intorno' })).toBeInTheDocument()
     expect(screen.getByText('Parlate al vostro tavolo.')).toBeInTheDocument()
+    expect(screen.getByText('Frammento uno.')).toBeInTheDocument()
+    expect(screen.getByText('Frammento due.')).toBeInTheDocument()
   })
   it('renders occupied and empty seats across the selected tables', async () => {
     getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 2 } })
