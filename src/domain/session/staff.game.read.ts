@@ -73,6 +73,8 @@ export type StaffGamePressureRoute = {
   instruction: string
 }
 
+export type StaffGameTableCoins = { table_number: number; balance: number }
+
 function unavailable<T>(): Result<T> {
   return fail(appError('TEMPORARY_UNAVAILABLE', 'Dati Regia non disponibili.', { retryable: false }))
 }
@@ -137,5 +139,12 @@ export async function getStaffGamePressureRoutes(gameCode: string): Promise<Resu
   if (!staffSupabaseClient) return unavailable<StaffGamePressureRoute[]>()
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_pressure_routes', { game_code: gameCode })
   if (error) { logger.warn('Staff game pressure routes failed', { cause: error }); return mapReadError(error) }
+  return ok(data ?? [])
+}
+
+export async function getStaffGameCoins(gameCode: string): Promise<Result<StaffGameTableCoins[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGameTableCoins[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_coins', { game_code: gameCode })
+  if (error) { logger.warn('Staff game coins failed', { cause: error }); return mapReadError(error) }
   return ok(data ?? [])
 }

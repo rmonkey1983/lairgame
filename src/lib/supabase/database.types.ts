@@ -602,6 +602,54 @@ export type Database = {
         }
         Relationships: []
       }
+      table_coin_ledger: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          created_by_staff_user_id: string | null
+          delta: number
+          game_id: string
+          game_table_id: string
+          id: string
+          reason: string
+        }
+        Insert: {
+          correlation_id: string
+          created_at?: string
+          created_by_staff_user_id?: string | null
+          delta: number
+          game_id: string
+          game_table_id: string
+          id?: string
+          reason: string
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          created_by_staff_user_id?: string | null
+          delta?: number
+          game_id?: string
+          game_table_id?: string
+          id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_coin_ledger_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_coin_ledger_game_id_game_table_id_fkey"
+            columns: ["game_id", "game_table_id"]
+            isOneToOne: false
+            referencedRelation: "game_tables"
+            referencedColumns: ["game_id", "id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -612,6 +660,25 @@ export type Database = {
         Returns: {
           acknowledged_at: string
           game_id: string
+        }[]
+      }
+      adjust_table_coins: {
+        Args: {
+          command_id: string
+          delta: number
+          game_code: string
+          reason: string
+          table_number: number
+        }
+        Returns: {
+          balance: number
+          correlation_id: string
+          created_at: string
+          delta: number
+          game_code: string
+          game_id: string
+          reason: string
+          table_number: number
         }[]
       }
       assign_game_roles: {
@@ -662,6 +729,7 @@ export type Database = {
           role_acknowledged: boolean
           scenario_title: string
           seat_number: number
+          table_coin_balance: number
           table_number: number
         }[]
       }
@@ -679,6 +747,13 @@ export type Database = {
           body: string
           table_number: number
           title: string
+        }[]
+      }
+      get_staff_game_coins: {
+        Args: { game_code: string }
+        Returns: {
+          balance: number
+          table_number: number
         }[]
       }
       get_staff_game_comparisons: {

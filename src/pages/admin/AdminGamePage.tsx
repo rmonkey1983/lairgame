@@ -24,6 +24,7 @@ import {
   getStaffGameClues,
   getStaffGameComparisons,
   getStaffGamePressureRoutes,
+  getStaffGameCoins,
   getStaffGameRoles,
   type StaffGameOverview,
   type StaffGameRosterPlayer,
@@ -31,6 +32,7 @@ import {
   type StaffGameClue,
   type StaffGameComparison,
   type StaffGamePressureRoute,
+  type StaffGameTableCoins,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
@@ -88,6 +90,7 @@ export default function AdminGamePage() {
   const [clues, setClues] = useState<StaffGameClue[] | null>(null);
   const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
   const [pressureRoutes, setPressureRoutes] = useState<StaffGamePressureRoute[] | null>(null);
+  const [tableCoins, setTableCoins] = useState<StaffGameTableCoins[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -137,6 +140,13 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
+  const loadTableCoins = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffGameCoins(gameCode);
+    if (r.ok) setTableCoins(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -149,16 +159,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes, loadTableCoins]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -365,6 +375,12 @@ export default function AdminGamePage() {
                   </dd>
                 </div>
               </dl>
+              <section className="mt-10 border-t border-border pt-6" aria-labelledby="coin-title">
+                <h2 id="coin-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">BBL COIN</h2>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {Array.from({ length: 5 }, (_, index) => { const coin = tableCoins?.find((item) => item.table_number === index + 1); return <p key={index + 1} className="border border-border px-3 py-2 text-sm">Tavolo {index + 1} — <span className="font-semibold text-primary">{coin?.balance ?? 0}</span></p> })}
+                </div>
+              </section>
               <section
                 className="mt-10 border-t border-border pt-6"
                 aria-labelledby="roster-title"

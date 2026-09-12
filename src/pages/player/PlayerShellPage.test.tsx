@@ -19,7 +19,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('PlayerShellPage', () => {
   it('renders current player state only', async () => {
-    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 3, seat_number: 1, role: null } })
+    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 3, seat_number: 1, role: null, table_coin_balance: 20 } })
     renderShell()
     expect(await screen.findByText('Sei dentro.')).toBeInTheDocument()
     expect(screen.getByText('Player')).toBeInTheDocument()
@@ -111,6 +111,14 @@ describe('PlayerShellPage', () => {
     expect(await screen.findByRole('heading', { name: 'Mettete sotto pressione' })).toBeInTheDocument()
     expect(screen.getByText('Tavolo 3')).toBeInTheDocument()
     expect(screen.getByText('La domanda scomoda')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('renders only the Player table Coin balance', async () => {
+    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'lobby', nickname: 'Player', table_number: 3, seat_number: 1, role: null, table_coin_balance: 17 } })
+    renderShell()
+    expect(await screen.findByText('BBL Coin tavolo: 17')).toBeInTheDocument()
+    expect(screen.queryByText('BBL Coin tavolo: 20')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
