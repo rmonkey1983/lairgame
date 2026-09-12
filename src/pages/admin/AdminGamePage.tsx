@@ -206,6 +206,8 @@ export default function AdminGamePage() {
         roles.length === overview.player_count &&
         roles.length === roster.length)),
   );
+  const acknowledgedCount = roles?.filter((role) => role.role_acknowledged).length ?? 0;
+  const acknowledgementsComplete = Boolean(rolesAssigned && roles && acknowledgedCount === roles.length);
   const canAssign =
     overview?.lifecycle === "live" &&
     overview.narrative_phase === "lobby" &&
@@ -388,10 +390,7 @@ export default function AdminGamePage() {
                         className="flex items-center justify-between border border-border px-3 py-2 text-sm"
                       >
                         <span className="font-semibold">{p.nickname}</span>
-                        <span>
-                          {roleLabels[p.role]} · Tavolo {p.table_number}, posto{" "}
-                          {p.seat_number}
-                        </span>
+                        <span className="text-right">{roleLabels[p.role]} · Tavolo {p.table_number}, posto {p.seat_number}<br /><span className={p.role_acknowledged ? "text-success" : "text-muted"}>{p.role_acknowledged ? "Confermato" : "In attesa"}</span></span>
                       </li>
                     ))}
                   </ul>
@@ -461,6 +460,7 @@ export default function AdminGamePage() {
                     ] ?? overview.narrative_phase}
                   </span>
                 </p>
+                {rolesAssigned && <p className="mt-2 text-sm text-muted">Ruoli confermati: {acknowledgedCount} / {roles?.length ?? 0}</p>}
                 {nextPhase ? (
                   <>
                     <button
@@ -473,7 +473,8 @@ export default function AdminGamePage() {
                       disabled={
                         phaseCommandPending ||
                         overview.lifecycle !== "live" ||
-                        (nextPhase === "role_reveal" && !rolesAssigned)
+                        (nextPhase === "role_reveal" && !rolesAssigned) ||
+                        (nextPhase === "briefing" && !acknowledgementsComplete)
                       }
                       onClick={() => void handlePhase(nextPhase)}
                     >
@@ -487,6 +488,9 @@ export default function AdminGamePage() {
                       <p className="mt-3 text-sm text-muted">
                         Assegna i ruoli prima di avanzare.
                       </p>
+                    )}
+                    {nextPhase === "briefing" && !acknowledgementsComplete && (
+                      <p className="mt-3 text-sm text-muted">Attendi la conferma di tutti i Player.</p>
                     )}
                   </>
                 ) : (

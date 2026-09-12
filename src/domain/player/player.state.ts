@@ -12,6 +12,7 @@ export type PlayerGameState = {
   table_number: number
   seat_number: number
   role: PlayerFacingRole | null
+  role_acknowledged: boolean
 }
 
 function mapError(error: { message: string }): Result<never> {

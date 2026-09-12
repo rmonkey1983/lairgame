@@ -41,6 +41,7 @@ export type StaffGameRole = {
   table_number: number
   seat_number: number
   role: 'liar' | 'accomplice' | 'scapegoat' | 'investigator'
+  role_acknowledged: boolean
 }
 
 function unavailable<T>(): Result<T> {

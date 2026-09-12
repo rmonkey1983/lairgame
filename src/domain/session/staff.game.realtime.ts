@@ -17,6 +17,9 @@ export function subscribeToStaffGameState(
     .on('broadcast', { event: 'game_state_changed' }, () => {
       if (!closed) onStateChanged()
     })
+    .on('broadcast', { event: 'role_acknowledgement_changed' }, () => {
+      if (!closed) onStateChanged()
+    })
 
   void (async () => {
     const { data, error } = await client.auth.getSession()

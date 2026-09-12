@@ -226,6 +226,15 @@ export type Database = {
           },
         ]
       }
+      game_role_acknowledgements: {
+        Row: { acknowledged_at: string; game_id: string; player_id: string }
+        Insert: { acknowledged_at?: string; game_id: string; player_id: string }
+        Update: { acknowledged_at?: string; game_id?: string; player_id?: string }
+        Relationships: [
+          { foreignKeyName: "game_role_acknowledgements_game_id_fkey"; columns: ["game_id"]; isOneToOne: false; referencedRelation: "games"; referencedColumns: ["id"] },
+          { foreignKeyName: "game_role_acknowledgements_player_id_fkey"; columns: ["player_id"]; isOneToOne: true; referencedRelation: "players"; referencedColumns: ["id"] },
+        ]
+      }
       game_tables: {
         Row: {
           created_at: string
@@ -376,6 +385,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_my_role: {
+        Args: { game_code: string }
+        Returns: { acknowledged_at: string; game_id: string }[]
+      }
       assign_game_roles: {
         Args: { command_id: string; game_code: string }
         Returns: {
@@ -406,6 +419,7 @@ export type Database = {
           narrative_phase: string
           nickname: string
           role: string
+          role_acknowledged: boolean
           seat_number: number
           table_number: number
         }[]
@@ -441,6 +455,7 @@ export type Database = {
           role: string
           seat_number: number
           table_number: number
+          role_acknowledged: boolean
         }[]
       }
       get_staff_game_roster: {

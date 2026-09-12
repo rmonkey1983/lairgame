@@ -4,7 +4,8 @@ import { subscribeToStaffGameState } from './staff.game.realtime'
 const { channel, subscribe, removeChannel, setAuth, getSession, on } = vi.hoisted(() => {
   const on = vi.fn()
   const subscribe = vi.fn()
-  const channel = vi.fn(() => ({ on, subscribe }))
+  const channelApi = { on, subscribe }
+  const channel = vi.fn(() => channelApi)
   return { channel, subscribe, removeChannel: vi.fn(), setAuth: vi.fn().mockResolvedValue(undefined), getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'staff-jwt' } }, error: null }), on }
 })
 
@@ -17,7 +18,7 @@ describe('staff game realtime subscription', () => {
 
   it('uses a private selected-game channel and authenticates before subscribing', async () => {
     let received!: () => void
-    on.mockImplementationOnce((_type: string, _filter: unknown, callback: () => void) => { received = callback; return { subscribe } })
+    on.mockImplementation((_type: string, _filter: unknown, callback: () => void) => { received = callback; return { on, subscribe } })
     const onStateChanged = vi.fn()
     const unsubscribe = subscribeToStaffGameState('game-1', onStateChanged)
 
@@ -34,7 +35,7 @@ describe('staff game realtime subscription', () => {
 
   it('forwards only safe connection statuses and ignores events after cleanup', async () => {
     let received!: () => void
-    on.mockImplementationOnce((_type: string, _filter: unknown, callback: () => void) => { received = callback; return { subscribe } })
+    on.mockImplementation((_type: string, _filter: unknown, callback: () => void) => { received = callback; return { on, subscribe } })
     const onStatus = vi.fn()
     const onStateChanged = vi.fn()
     const unsubscribe = subscribeToStaffGameState('game-1', onStateChanged, onStatus)

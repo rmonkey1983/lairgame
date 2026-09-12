@@ -1,12 +1,15 @@
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PlayerShellPage from './PlayerShellPage'
 
 const getState = vi.hoisted(() => vi.fn())
 const subscribe = vi.hoisted(() => vi.fn(() => vi.fn()))
+const acknowledge = vi.hoisted(() => vi.fn())
 vi.mock('../../domain/player/player.state', () => ({ getMyPlayerState: getState }))
 vi.mock('../../domain/player/player.realtime', () => ({ subscribeToPlayerGameState: subscribe }))
+vi.mock('../../domain/player/player.role', () => ({ acknowledgeMyRole: acknowledge }))
 
 function renderShell() {
   return render(<MemoryRouter initialEntries={['/play/JOIN-ONE/session']}><Routes><Route path="/play/:gameCode/session" element={<PlayerShellPage />} /><Route path="/play/:gameCode" element={<p>join route</p>} /></Routes></MemoryRouter>)
@@ -41,6 +44,17 @@ describe('PlayerShellPage', () => {
     renderShell()
     expect(await screen.findByText('Investigatore')).toBeInTheDocument()
     expect(screen.queryByText('Scapegoat')).not.toBeInTheDocument()
+  })
+
+  it('acknowledges the private role and refreshes authoritative state', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'role_reveal', nickname: 'Player', table_number: 3, seat_number: 1, role: 'liar', role_acknowledged: false } })
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'role_reveal', nickname: 'Player', table_number: 3, seat_number: 1, role: 'liar', role_acknowledged: true } })
+    acknowledge.mockResolvedValue({ ok: true, value: undefined })
+    renderShell()
+    await userEvent.click(await screen.findByRole('button', { name: 'Ho capito il mio ruolo' }))
+    expect(acknowledge).toHaveBeenCalledWith('JOIN-ONE')
+    expect(await screen.findByText('Ruolo confermato. Attendi la Regia.')).toBeInTheDocument()
   })
 
   it('handles missing session without creating replacement identity', async () => {

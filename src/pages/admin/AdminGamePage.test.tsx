@@ -210,4 +210,23 @@ describe('AdminGamePage', () => {
     await userEvent.click(button)
     expect(transitionGameNarrativePhase).not.toHaveBeenCalled()
   })
+
+  it('shows acknowledgement progress and guards briefing until all Players confirm', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'role_reveal', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 3 } })
+    getStaffGameRoster.mockResolvedValue({ ok: true, value: [
+      { player_id: 'p1', nickname: 'Alice', table_number: 1, seat_number: 1, joined_at: '2026-09-10T00:00:00Z' },
+      { player_id: 'p2', nickname: 'Bob', table_number: 1, seat_number: 2, joined_at: '2026-09-10T00:00:00Z' },
+      { player_id: 'p3', nickname: 'Cara', table_number: 1, seat_number: 3, joined_at: '2026-09-10T00:00:00Z' },
+    ] })
+    getStaffGameRoles.mockResolvedValue({ ok: true, value: [
+      { player_id: 'p1', nickname: 'Alice', table_number: 1, seat_number: 1, role: 'liar', role_acknowledged: true },
+      { player_id: 'p2', nickname: 'Bob', table_number: 1, seat_number: 2, role: 'accomplice', role_acknowledged: false },
+      { player_id: 'p3', nickname: 'Cara', table_number: 1, seat_number: 3, role: 'investigator', role_acknowledged: false },
+    ] as never })
+    renderPage()
+    const button = await screen.findByRole('button', { name: 'Vai al briefing' })
+    expect(screen.getByText('Ruoli confermati: 1 / 3')).toBeInTheDocument()
+    expect(button).toBeDisabled()
+    expect(screen.getByText('Attendi la conferma di tutti i Player.')).toBeInTheDocument()
+  })
 })
