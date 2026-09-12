@@ -1,6 +1,6 @@
 # Liar System
 
-Liar System è un Social Deduction Experience Engine di Black Bulls Lab. Orchestrerà esperienze sociali live con ruoli segreti, informazioni frammentate, missioni, indizi, BBL Coin, aste, votazioni, reveal e strumenti Regia.
+Liar System è un Social Deduction Experience Engine di Black Bulls Lab. Orchestrerà esperienze sociali live con ruoli segreti, informazioni frammentate, missioni, indizi, votazioni, reveal e strumenti Regia.
 
 ## Primo format
 

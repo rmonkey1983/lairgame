@@ -19,15 +19,12 @@ import {
 } from "../../domain/session/staff.game.phase.command";
 import { assignGameRoles } from "../../domain/session/staff.game.roles.command";
 import { resetGameForTesting } from "../../domain/session/staff.game.reset.command";
-import { closeGameAuction, closeGameAuctionNoSale, openGameAuction, recordGameAuctionBid } from "../../domain/session/staff.game.auction.command";
 import {
   getStaffGameOverview,
   getStaffGameRoster,
   getStaffGameClues,
   getStaffGameComparisons,
   getStaffGamePressureRoutes,
-  getStaffGameCoins,
-  getStaffGameAuction,
   getStaffGameRoles,
   type StaffGameOverview,
   type StaffGameRosterPlayer,
@@ -35,8 +32,6 @@ import {
   type StaffGameClue,
   type StaffGameComparison,
   type StaffGamePressureRoute,
-  type StaffGameTableCoins,
-  type StaffGameAuction,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
@@ -56,7 +51,6 @@ const narrativePhaseLabels: Record<NarrativePhase, string> = {
   discovery: "Scoperta",
   comparison: "Confronto",
   pressure: "Pressione",
-  auction: "Asta",
   deliberation: "Deliberazione",
   final_vote: "Voto finale",
   reveal: "Rivelazione",
@@ -67,8 +61,7 @@ const narrativePhaseActionLabels: Record<NarrativePhase, string> = {
   briefing: "Vai a scoperta",
   discovery: "Vai al confronto",
   comparison: "Vai alla pressione",
-  pressure: "Vai all’asta",
-  auction: "Vai alla deliberazione",
+  pressure: "Vai alla deliberazione",
   deliberation: "Vai al voto finale",
   final_vote: "Vai alla rivelazione",
   reveal: "",
@@ -94,11 +87,6 @@ export default function AdminGamePage() {
   const [clues, setClues] = useState<StaffGameClue[] | null>(null);
   const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
   const [pressureRoutes, setPressureRoutes] = useState<StaffGamePressureRoute[] | null>(null);
-  const [tableCoins, setTableCoins] = useState<StaffGameTableCoins[] | null>(null);
-  const [auction, setAuction] = useState<StaffGameAuction | null>(null);
-  const [auctionTable, setAuctionTable] = useState(1);
-  const [auctionAmount, setAuctionAmount] = useState(1);
-  const [auctionPending, setAuctionPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -149,20 +137,6 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
-  const loadTableCoins = useCallback(async () => {
-    if (!gameCode) return null;
-    const r = await getStaffGameCoins(gameCode);
-    if (r.ok) setTableCoins(r.value);
-    else setError(r.error.userMessage);
-    return r;
-  }, [gameCode]);
-  const loadAuction = useCallback(async () => {
-    if (!gameCode) return null;
-    const r = await getStaffGameAuction(gameCode);
-    if (r.ok) setAuction(r.value);
-    else setError(r.error.userMessage);
-    return r;
-  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -175,16 +149,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes, loadTableCoins, loadAuction]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -251,18 +225,10 @@ export default function AdminGamePage() {
     setError(null);
     const r = await resetGameForTesting(gameCode);
     if (r.ok) {
-      await Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadTableCoins(), loadAuction()]);
+      await Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
       setNotice("Partita resettata.");
     } else setError(r.error.userMessage);
     setResetPending(false);
-  }
-  async function handleAuctionCommand(command: () => Promise<unknown>) {
-    if (auctionPending) return;
-    setAuctionPending(true); setError(null);
-    const result = await command();
-    if (result && typeof result === 'object' && 'ok' in result && !(result as { ok: boolean }).ok) setError((result as unknown as { error: { userMessage: string } }).error.userMessage);
-    await Promise.all([loadAuction(), loadTableCoins()]);
-    setAuctionPending(false);
   }
   const allowed = overview
     ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle).filter((target) => target !== "completed" || overview.narrative_phase === "reveal")
@@ -288,10 +254,9 @@ export default function AdminGamePage() {
     overview?.lifecycle === "live" &&
     overview.narrative_phase === "lobby" &&
     !rolesAssigned;
-  const auctionSettled = auction?.status === "closed" || auction?.status === "no_sale";
   return (
     <PageShell eyebrow="Control Room · game context" title="Regia">
-      <div className="max-w-2xl">
+      <div className="admin-game-content max-w-2xl">
         <Link
           className="text-sm text-primary underline-offset-4"
           to="/admin/games"
@@ -386,24 +351,6 @@ export default function AdminGamePage() {
                   </div>
                 </section>
               )}
-              {overview.narrative_phase === "auction" && auction && (
-                <section className="mt-6 border border-border p-4" aria-labelledby="staff-auction-title">
-                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Asta</p>
-                  <h2 id="staff-auction-title" className="mt-2 text-2xl font-semibold text-primary">{auction.item_title}</h2>
-                  <p className="mt-4 whitespace-pre-wrap leading-7">{auction.item_teaser}</p>
-                  {auction.status === "not_open" ? <button className="action mt-6" type="button" disabled={auctionPending} onClick={() => void handleAuctionCommand(() => openGameAuction(gameCode ?? ""))}>Apri asta</button> : auction.status === "open" ? <>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                      <label className="text-sm">Tavolo<select className="mt-1 block w-full border border-border bg-surface p-2" value={auctionTable} onChange={(event) => setAuctionTable(Number(event.target.value))}>{[1,2,3,4,5].map((table) => <option key={table} value={table}>{table}</option>)}</select></label>
-                      <label className="text-sm">Offerta<input className="mt-1 block w-full border border-border bg-surface p-2" type="number" min="1" value={auctionAmount} onChange={(event) => setAuctionAmount(Number(event.target.value))} /></label>
-                      <button className="action self-end" type="button" disabled={auctionPending} onClick={() => void handleAuctionCommand(() => recordGameAuctionBid(gameCode ?? "", auctionTable, auctionAmount))}>Registra offerta</button>
-                    </div>
-                    <p className="mt-5 font-semibold">Offerta massima: {auction.current_highest_bid ?? "—"}{auction.current_highest_table_number ? ` · Tavolo ${auction.current_highest_table_number}` : ""}</p>
-                    <ul className="mt-4 grid gap-2" aria-label="Offerte accettate">{auction.bids.map((bid, index) => <li key={`${bid.created_at}-${index}`} className="border-t border-border pt-2 text-sm">Tavolo {bid.table_number} — {bid.amount}</li>)}</ul>
-                    <div className="mt-6 flex flex-wrap gap-3"><button className="action" type="button" disabled={auctionPending || auction.bids.length === 0} onClick={() => void handleAuctionCommand(() => closeGameAuction(gameCode ?? ""))}>Chiudi asta</button><button className="action action-secondary" type="button" disabled={auctionPending || auction.bids.length > 0} onClick={() => void handleAuctionCommand(() => closeGameAuctionNoSale(gameCode ?? ""))}>Chiudi senza vendita</button></div>
-                  </> : <p className="mt-5 font-semibold">Stato: {auction.status === "closed" ? `Chiusa · Tavolo ${auction.winning_table_number} · ${auction.winning_bid}` : "Nessuna vendita"}</p>}
-                  {auction.status !== "open" && auctionSettled && <p className="mt-3 text-sm text-muted">Premio riservato alla Regia; non è ancora mostrato al Player.</p>}
-                </section>
-              )}
               <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2">
                 <div>
                   <dt className="text-sm text-muted">Lifecycle</dt>
@@ -430,12 +377,6 @@ export default function AdminGamePage() {
                   </dd>
                 </div>
               </dl>
-              <section className="mt-10 border-t border-border pt-6" aria-labelledby="coin-title">
-                <h2 id="coin-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">BBL COIN</h2>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {Array.from({ length: 5 }, (_, index) => { const coin = tableCoins?.find((item) => item.table_number === index + 1); return <p key={index + 1} className="border border-border px-3 py-2 text-sm">Tavolo {index + 1} — <span className="font-semibold text-primary">{coin?.balance ?? 0}</span></p> })}
-                </div>
-              </section>
               <section
                 className="mt-10 border-t border-border pt-6"
                 aria-labelledby="roster-title"
@@ -452,7 +393,7 @@ export default function AdminGamePage() {
                       {roster.length} / {overview.table_count * seatsPerTable}{" "}
                       posti occupati
                     </p>
-                    <div className="mt-5 grid gap-5">
+                    <div className="roster-table-grid mt-5">
                       {Array.from({ length: overview.table_count }, (_, ti) => (
                         <section key={ti + 1}>
                           <h3 className="font-semibold">Tavolo {ti + 1}</h3>
@@ -466,7 +407,7 @@ export default function AdminGamePage() {
                               return (
                                 <li
                                   key={si + 1}
-                                  className="flex items-center justify-between border border-border px-3 py-2 text-sm"
+                                  className="seat-row flex items-center justify-between border border-border px-3 py-2 text-sm"
                                 >
                                   <span>Posto {si + 1}</span>
                                   <span
@@ -539,7 +480,7 @@ export default function AdminGamePage() {
                     {roles?.map((p) => (
                       <li
                         key={p.player_id}
-                        className="flex items-center justify-between border border-border px-3 py-2 text-sm"
+                        className="role-row flex items-center justify-between border border-border px-3 py-2 text-sm"
                       >
                         <span className="font-semibold">{p.nickname}</span>
                         <span className="text-right">{roleLabels[p.role]} · Tavolo {p.table_number}, posto {p.seat_number}<br /><span className={p.role_acknowledged ? "text-success" : "text-muted"}>{p.role_acknowledged ? "Confermato" : "In attesa"}</span></span>
@@ -565,7 +506,7 @@ export default function AdminGamePage() {
                   </span>
                 </p>
                 {allowed.length ? (
-                  <div className="mt-5 flex flex-wrap gap-3">
+                  <div className="responsive-actions mt-5">
                     {allowed.map((target) => (
                       <button
                         key={target}
@@ -626,8 +567,7 @@ export default function AdminGamePage() {
                         phaseCommandPending ||
                         overview.lifecycle !== "live" ||
                         (nextPhase === "role_reveal" && !rolesAssigned) ||
-                        (nextPhase === "briefing" && !acknowledgementsComplete) ||
-                        (nextPhase === "deliberation" && !auctionSettled)
+                        (nextPhase === "briefing" && !acknowledgementsComplete)
                       }
                       onClick={() => void handlePhase(nextPhase)}
                     >
@@ -645,7 +585,6 @@ export default function AdminGamePage() {
                     {nextPhase === "briefing" && !acknowledgementsComplete && (
                       <p className="mt-3 text-sm text-muted">Attendi la conferma di tutti i Player.</p>
                     )}
-                    {nextPhase === "deliberation" && !auctionSettled && <p className="mt-3 text-sm text-muted">Chiudi l’asta prima di avanzare.</p>}
                   </>
                 ) : (
                   <p className="mt-5 text-sm text-muted">

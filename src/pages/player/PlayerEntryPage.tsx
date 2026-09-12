@@ -23,23 +23,26 @@ export default function PlayerEntryPage() {
     navigate(`/play/${gameCode!.trim()}/session`)
   }
 
-  return <PageShell eyebrow="Player entry" title="Entra nella partita">
-    <div className="max-w-md">
-      <p className="text-sm uppercase tracking-[0.16em] text-muted">Game code</p>
-      <p className="mt-2 font-mono text-3xl font-semibold text-primary">{gameCode}</p>
+  return <PageShell eyebrow="Player entry / Check-in" title="Entra nella partita">
+    <div className="max-w-xl">
+      <p className="max-w-md text-lg leading-7 text-muted">Prendi posto. Il resto succede lontano dallo schermo.</p>
+      <div className="entry-card mt-8 max-w-md border border-border bg-surface p-5 sm:p-7">
+      <p className="text-sm uppercase tracking-[0.16em] text-muted">Codice partita</p>
+      <p className="entry-code mt-2 font-mono text-3xl font-semibold text-primary">{gameCode}</p>
       <form className="mt-8 grid gap-5" onSubmit={handleSubmit}>
         <label className="grid gap-2 text-sm font-semibold" htmlFor="nickname">Nickname
           <input id="nickname" autoComplete="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} />
         </label>
-        <label className="grid gap-2 text-sm font-semibold" htmlFor="table-number">Numero tavolo
+        <div className="entry-seat-grid"><label className="grid gap-2 text-sm font-semibold" htmlFor="table-number">Numero tavolo
           <input id="table-number" inputMode="numeric" type="number" min="1" value={tableNumber} onChange={(event) => setTableNumber(event.target.value)} />
         </label>
         <label className="grid gap-2 text-sm font-semibold" htmlFor="seat-number">Numero posto
           <input id="seat-number" inputMode="numeric" type="number" min="1" value={seatNumber} onChange={(event) => setSeatNumber(event.target.value)} />
-        </label>
+        </label></div>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        <button className="action w-fit" type="submit" disabled={submitting}>{submitting ? 'Ingresso in corso…' : 'Entra nel gioco'}</button>
+        <button className="action form-action w-fit" type="submit" disabled={submitting}>{submitting ? 'Ingresso in corso…' : 'Entra nel gioco'}</button>
       </form>
+      </div>
     </div>
   </PageShell>
 }

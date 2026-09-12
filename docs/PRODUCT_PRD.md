@@ -10,7 +10,7 @@ Partecipanti che parlano, osservano e decidono fisicamente; telefono usato solo 
 
 ## V1 scope
 
-Un format canonico: 30 partecipanti, 5 tavoli, 6 per tavolo, 1 MC, 120 minuti. Ruoli: 1 Bugiardo, 1 Complice, 1 Capro Espiatorio inconsapevole, 27 Investigatori. Player Terminal; Control Room; ruoli, missioni, clue, Coin, asta fisica registrata, voto privato, reveal, timeline e log.
+Un format canonico: 30 partecipanti, 5 tavoli, 6 per tavolo, 1 MC, 120 minuti. Ruoli: 1 Bugiardo, 1 Complice, 1 Capro Espiatorio inconsapevole, 27 Investigatori. Player Terminal; Control Room; ruoli, missioni, clue, voto privato, reveal, timeline e log.
 
 ## Non-goals
 
@@ -27,10 +27,8 @@ FR-01 route Player per game code e route Regia autenticata.
 FR-02 join concorrente senza doppio posto e recovery/rebind gestibile.
 FR-03 assegnazione ruoli unica e privata.
 FR-04 mission/clue consegnati secondo scenario version.
-FR-05 Coin da ledger append-only, reward idempotenti.
-FR-06 MC registra asta fisica; validazione saldo e charge atomici.
-FR-07 voto privato: target, motivazione breve, review, conferma irreversibile.
-FR-08 Regia vede turnout, stato, alert, health e reveal autorizzato.
+FR-05 voto privato: target, motivazione breve, review, conferma irreversibile.
+FR-06 Regia vede turnout, stato, alert, health e reveal autorizzato.
 
 ## Requisiti gioco, resilienza, sicurezza, performance
 

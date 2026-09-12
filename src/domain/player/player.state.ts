@@ -29,7 +29,6 @@ export type PlayerGameState = {
   pressure_target_table_number: number | null
   pressure_route_title: string | null
   pressure_instruction: string | null
-  table_coin_balance: number
 }
 
 function mapError(error: { message: string }): Result<never> {

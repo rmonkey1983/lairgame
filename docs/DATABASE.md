@@ -2,7 +2,7 @@
 
 ## Schema proposto
 
-Domini: identity/access (`staff_members`, memberships, `players`), event/game (`events`, `games`, `game_tables`), scenario (`scenarios`, `scenario_versions`, facts/templates), runtime (`role_assignments`, mission instances, clue deliveries, directives), economy (`coin_ledger_entries`, auctions, bids), decision (`votes`, `vote_results`), audit (`timeline_events`, `game_logs`). Nomi definitivi e colonne vanno approvati con contratti.
+Domini: identity/access (`staff_members`, memberships, `players`), event/game (`events`, `games`, `game_tables`), scenario (`scenarios`, `scenario_versions`, facts/templates), runtime (`role_assignments`, mission instances, clue deliveries, directives), decision (`votes`, `vote_results`), audit (`timeline_events`, `game_logs`). Nomi definitivi e colonne vanno approvati con contratti.
 
 ## Keys, constraints, indexes
 
@@ -14,11 +14,11 @@ Default deny. Player legge solo snapshot/RPC che filtrano `auth.uid()` e game me
 
 ## RPC boundaries
 
-Read: player/admin snapshot bounded, roster sanitizzato, vote turnout, health. Commands: join/rebind, lifecycle/phase, delivery, reward, auction bid/close, vote confirm, reveal. Ogni command valida preconditions, authorization, idempotency e transaction; ritorna risultato minimo o errore tipizzato.
+Read: player/admin snapshot bounded, roster sanitizzato, vote turnout, health. Commands: join/rebind, lifecycle/phase, delivery, vote confirm, reveal. Ogni command valida preconditions, authorization, idempotency e transaction; ritorna risultato minimo o errore tipizzato.
 
 ## Migration order
 
-1. extensions/enums e timestamp policy; 2. identity/access; 3. Event/Game/Table/Scenario; 4. version content; 5. runtime secret domains; 6. ledger/auction/vote; 7. audit; 8. RLS; 9. RPC; 10. Realtime authorization; 11. controlled seed/test fixtures.
+1. extensions/enums e timestamp policy; 2. identity/access; 3. Event/Game/Table/Scenario; 4. version content; 5. runtime secret domains; 6. vote; 7. audit; 8. RLS; 9. RPC; 10. Realtime authorization; 11. controlled seed/test fixtures.
 
 Nessuna migration SQL in Milestone 0. Decidere prima retention, soft-delete, enum strategy, session recovery e granularità membership.
 

@@ -15,7 +15,7 @@
 
 ## Final V1 simulation
 
-1 Staff, 30 Player, 5 tavoli, 30 join concorrenti/controllati, ruoli unici, mission, clue, Coin, asta, voto, reveal, refresh, reconnect e finish. Assert no secret leak, no duplicate charge/reward/vote, immutable result, authoritative snapshots and complete audit.
+1 Staff, 30 Player, 5 tavoli, 30 join concorrenti/controllati, ruoli unici, mission, clue, voto, reveal, refresh, reconnect e finish. Assert no secret leak, no duplicate vote, immutable result, authoritative snapshots and complete audit.
 
 ## Gates
 

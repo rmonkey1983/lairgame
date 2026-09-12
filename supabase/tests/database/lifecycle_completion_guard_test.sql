@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(15);
 select has_function('public','transition_game_lifecycle',array['text','text','text','uuid'],'lifecycle command remains available');
 select ok((select prosecdef from pg_proc where oid='private.transition_game_lifecycle_impl(text,text,text,uuid)'::regprocedure),'lifecycle implementation remains definer');
 insert into auth.users(id,aud,role,email,is_anonymous) values
@@ -22,8 +22,6 @@ reset role; update public.games set narrative_phase='comparison' where code='TES
 select throws_ok($$select * from public.transition_game_lifecycle('TEST01','live','completed','80000000-0000-0000-0000-000000000805')$$,'P0001','GAME_NOT_READY_TO_COMPLETE','comparison cannot complete');
 reset role; update public.games set narrative_phase='pressure' where code='TEST01'; set local role authenticated;
 select throws_ok($$select * from public.transition_game_lifecycle('TEST01','live','completed','80000000-0000-0000-0000-000000000806')$$,'P0001','GAME_NOT_READY_TO_COMPLETE','pressure cannot complete');
-reset role; update public.games set narrative_phase='auction' where code='TEST01'; set local role authenticated;
-select throws_ok($$select * from public.transition_game_lifecycle('TEST01','live','completed','80000000-0000-0000-0000-000000000807')$$,'P0001','GAME_NOT_READY_TO_COMPLETE','auction cannot complete');
 reset role; update public.games set narrative_phase='deliberation' where code='TEST01'; set local role authenticated;
 select throws_ok($$select * from public.transition_game_lifecycle('TEST01','live','completed','80000000-0000-0000-0000-000000000808')$$,'P0001','GAME_NOT_READY_TO_COMPLETE','deliberation cannot complete');
 reset role; update public.games set narrative_phase='final_vote' where code='TEST01'; set local role authenticated;

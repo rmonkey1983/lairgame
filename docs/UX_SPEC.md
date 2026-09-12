@@ -6,7 +6,7 @@ Mobile-first 360–430px. Flusso: QR → `/play/:gameCode` → join → waiting 
 
 ## Control Room
 
-Desktop-first, orientata a operazioni live: login, game selector obbligatorio, preflight, roster, lifecycle, phase, master clock, ruoli, mission, clue, Coin, asta, turnout/vote monitor, reveal, timeline, log, Realtime health, alert, danger zone. Mostrare sempre game corrente, stato, ultima sincronizzazione e azione primaria. Azioni distruttive richiedono conferma chiara.
+Desktop-first, orientata a operazioni live: login, game selector obbligatorio, preflight, roster, lifecycle, phase, master clock, ruoli, mission, clue, turnout/vote monitor, reveal, timeline, log, Realtime health, alert, danger zone. Mostrare sempre game corrente, stato, ultima sincronizzazione e azione primaria. Azioni distruttive richiedono conferma chiara.
 
 ## Accessibilità e failure states
 

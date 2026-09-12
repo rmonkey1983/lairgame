@@ -19,9 +19,6 @@ Ogni entità ha ID stabile, timestamp e audit minimo. Stato critico è server-au
 | MissionInstance | Missione assegnata; pending→delivered→acknowledged/completed; Player può vedere solo propria. |
 | ClueTemplate | Indizio versionato; draft→published; visibility e condizioni definite; immutabile in uso. |
 | ClueDelivery | Consegna runtime; locked→unlocked→delivered; target e unlock atomici; privata per destinatario. |
-| CoinLedgerEntry | Movimento append-only; posted→voided solo con compensazione; amount, scope, correlation/idempotency unici. |
-| Auction | Asta fisica; scheduled→open→closed/cancelled; Game/Table scope; chiusura una volta. |
-| AuctionBid | Offerta registrata dalla Regia; submitted→accepted/rejected; saldo e concorrenza verificati in transaction. |
 | Vote | Voto privato; draft→submitted→confirmed; un Player/round, no edit dopo conferma. |
 | VoteResult | Snapshot immutabile; pending→finalized→revealed; creato dopo close; non ricalcolato retroattivamente. |
 | TimelineEvent | Evento operativo/narrativo ordinato; append-only; sequence per Game monotona. |
@@ -30,4 +27,4 @@ Ogni entità ha ID stabile, timestamp e audit minimo. Stato critico è server-au
 
 ## State separation
 
-Lifecycle Game e narrative phase (`lobby`, `role_reveal`, `briefing`, `discovery`, `comparison`, `pressure`, `auction`, `deliberation`, `final_vote`, `reveal`) sono assi distinti. Transizioni valide, autorizzazioni e preconditions restano da formalizzare in Milestone 1.
+Lifecycle Game e narrative phase (`lobby`, `role_reveal`, `briefing`, `discovery`, `comparison`, `pressure`, `deliberation`, `final_vote`, `reveal`) sono assi distinti. Transizioni valide, autorizzazioni e preconditions restano da formalizzare in Milestone 1.

@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(37);
 
 select has_function('public', 'transition_game_narrative_phase', array['text', 'text', 'text', 'uuid'], 'narrative phase command exists');
 select ok(not (select prosecdef from pg_proc where oid = 'public.transition_game_narrative_phase(text,text,text,uuid)'::regprocedure), 'public phase command is invoker');
@@ -78,16 +78,11 @@ select is((select phase from public.transition_game_narrative_phase('TEST01', 'r
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'briefing', 'discovery', '70000000-0000-0000-0000-000000000073')), 'discovery', 'briefing advances to discovery');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'discovery', 'comparison', '70000000-0000-0000-0000-000000000074')), 'comparison', 'discovery advances to comparison');
 select is((select phase from public.transition_game_narrative_phase('TEST01', 'comparison', 'pressure', '70000000-0000-0000-0000-000000000075')), 'pressure', 'comparison advances to pressure');
-select is((select phase from public.transition_game_narrative_phase('TEST01', 'pressure', 'auction', '70000000-0000-0000-0000-000000000076')), 'auction', 'pressure advances to auction');
+select is((select phase from public.transition_game_narrative_phase('TEST01', 'pressure', 'deliberation', '70000000-0000-0000-0000-000000000076')), 'deliberation', 'pressure advances to deliberation');
+select is((select phase from public.transition_game_narrative_phase('TEST01', 'deliberation', 'final_vote', '70000000-0000-0000-0000-000000000077')), 'final_vote', 'deliberation advances to final vote');
+select is((select phase from public.transition_game_narrative_phase('TEST01', 'final_vote', 'reveal', '70000000-0000-0000-0000-000000000078')), 'reveal', 'final vote advances to reveal');
 reset role;
-insert into public.game_auctions (game_id, scenario_auction_item_id, status, closed_at)
-values ('a0000000-0000-0000-0000-000000000050', 'f0000000-0000-0000-0000-000000000211', 'no_sale', now());
-set local role authenticated;
-select is((select phase from public.transition_game_narrative_phase('TEST01', 'auction', 'deliberation', '70000000-0000-0000-0000-000000000077')), 'deliberation', 'auction advances to deliberation');
-select is((select phase from public.transition_game_narrative_phase('TEST01', 'deliberation', 'final_vote', '70000000-0000-0000-0000-000000000078')), 'final_vote', 'deliberation advances to final vote');
-select is((select phase from public.transition_game_narrative_phase('TEST01', 'final_vote', 'reveal', '70000000-0000-0000-0000-000000000079')), 'reveal', 'final vote advances to reveal');
-reset role;
-select is((select count(*) from public.game_narrative_phase_commands), 9::bigint, 'all sequential transitions have one audit each');
+select is((select count(*) from public.game_narrative_phase_commands), 8::bigint, 'all sequential transitions have one audit each');
 
 select ok(not has_table_privilege('authenticated', 'public.games', 'UPDATE'), 'browser cannot update games directly');
 select ok(not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'graphql_public') and p.prosecdef), 'exposed schemas contain no definer functions');

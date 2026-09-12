@@ -64,154 +64,6 @@ export type Database = {
         }
         Relationships: []
       }
-      game_auction_bids: {
-        Row: {
-          amount: number
-          command_id: string
-          created_at: string
-          created_by_staff_user_id: string
-          game_auction_id: string
-          game_table_id: string
-          id: string
-        }
-        Insert: {
-          amount: number
-          command_id: string
-          created_at?: string
-          created_by_staff_user_id: string
-          game_auction_id: string
-          game_table_id: string
-          id?: string
-        }
-        Update: {
-          amount?: number
-          command_id?: string
-          created_at?: string
-          created_by_staff_user_id?: string
-          game_auction_id?: string
-          game_table_id?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "game_auction_bids_game_auction_id_fkey"
-            columns: ["game_auction_id"]
-            isOneToOne: false
-            referencedRelation: "game_auctions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "game_auction_bids_game_table_id_fkey"
-            columns: ["game_table_id"]
-            isOneToOne: false
-            referencedRelation: "game_tables"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      game_auction_commands: {
-        Row: {
-          command_id: string
-          command_kind: string
-          created_at: string
-          game_auction_id: string
-          game_id: string
-          status: string
-          winning_bid: number | null
-          winning_table_id: string | null
-        }
-        Insert: {
-          command_id: string
-          command_kind: string
-          created_at?: string
-          game_auction_id: string
-          game_id: string
-          status: string
-          winning_bid?: number | null
-          winning_table_id?: string | null
-        }
-        Update: {
-          command_id?: string
-          command_kind?: string
-          created_at?: string
-          game_auction_id?: string
-          game_id?: string
-          status?: string
-          winning_bid?: number | null
-          winning_table_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "game_auction_commands_game_auction_id_fkey"
-            columns: ["game_auction_id"]
-            isOneToOne: false
-            referencedRelation: "game_auctions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "game_auction_commands_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      game_auctions: {
-        Row: {
-          closed_at: string | null
-          game_id: string
-          id: string
-          opened_at: string
-          scenario_auction_item_id: string
-          status: string
-          winning_bid: number | null
-          winning_table_id: string | null
-        }
-        Insert: {
-          closed_at?: string | null
-          game_id: string
-          id?: string
-          opened_at?: string
-          scenario_auction_item_id: string
-          status: string
-          winning_bid?: number | null
-          winning_table_id?: string | null
-        }
-        Update: {
-          closed_at?: string | null
-          game_id?: string
-          id?: string
-          opened_at?: string
-          scenario_auction_item_id?: string
-          status?: string
-          winning_bid?: number | null
-          winning_table_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "game_auctions_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "game_auctions_game_id_winning_table_id_fkey"
-            columns: ["game_id", "winning_table_id"]
-            isOneToOne: false
-            referencedRelation: "game_tables"
-            referencedColumns: ["game_id", "id"]
-          },
-          {
-            foreignKeyName: "game_auctions_scenario_auction_item_id_fkey"
-            columns: ["scenario_auction_item_id"]
-            isOneToOne: false
-            referencedRelation: "scenario_auction_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       game_lifecycle_commands: {
         Row: {
           command_id: string
@@ -292,6 +144,42 @@ export type Database = {
           },
           {
             foreignKeyName: "game_narrative_phase_commands_staff_member_id_fkey"
+            columns: ["staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_reset_commands: {
+        Row: {
+          command_id: string
+          created_at: string
+          game_id: string
+          staff_member_id: string
+        }
+        Insert: {
+          command_id: string
+          created_at?: string
+          game_id: string
+          staff_member_id: string
+        }
+        Update: {
+          command_id?: string
+          created_at?: string
+          game_id?: string
+          staff_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_reset_commands_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_reset_commands_staff_member_id_fkey"
             columns: ["staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
@@ -538,47 +426,6 @@ export type Database = {
           },
         ]
       }
-      scenario_auction_items: {
-        Row: {
-          created_at: string
-          id: string
-          reward_body: string
-          reward_title: string
-          scenario_version_id: string
-          sequence_number: number
-          teaser: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          reward_body: string
-          reward_title: string
-          scenario_version_id: string
-          sequence_number: number
-          teaser: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          reward_body?: string
-          reward_title?: string
-          scenario_version_id?: string
-          sequence_number?: number
-          teaser?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scenario_auction_items_scenario_version_id_fkey"
-            columns: ["scenario_version_id"]
-            isOneToOne: false
-            referencedRelation: "scenario_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       scenario_table_clues: {
         Row: {
           body: string
@@ -794,54 +641,6 @@ export type Database = {
         }
         Relationships: []
       }
-      table_coin_ledger: {
-        Row: {
-          correlation_id: string
-          created_at: string
-          created_by_staff_user_id: string | null
-          delta: number
-          game_id: string
-          game_table_id: string
-          id: string
-          reason: string
-        }
-        Insert: {
-          correlation_id: string
-          created_at?: string
-          created_by_staff_user_id?: string | null
-          delta: number
-          game_id: string
-          game_table_id: string
-          id?: string
-          reason: string
-        }
-        Update: {
-          correlation_id?: string
-          created_at?: string
-          created_by_staff_user_id?: string | null
-          delta?: number
-          game_id?: string
-          game_table_id?: string
-          id?: string
-          reason?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "table_coin_ledger_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "table_coin_ledger_game_id_game_table_id_fkey"
-            columns: ["game_id", "game_table_id"]
-            isOneToOne: false
-            referencedRelation: "game_tables"
-            referencedColumns: ["game_id", "id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -854,25 +653,6 @@ export type Database = {
           game_id: string
         }[]
       }
-      adjust_table_coins: {
-        Args: {
-          command_id: string
-          delta: number
-          game_code: string
-          reason: string
-          table_number: number
-        }
-        Returns: {
-          balance: number
-          correlation_id: string
-          created_at: string
-          delta: number
-          game_code: string
-          game_id: string
-          reason: string
-          table_number: number
-        }[]
-      }
       assign_game_roles: {
         Args: { command_id: string; game_code: string }
         Returns: {
@@ -881,28 +661,6 @@ export type Database = {
           game_code: string
           game_id: string
           player_count: number
-        }[]
-      }
-      close_game_auction: {
-        Args: { command_id: string; game_code: string }
-        Returns: {
-          auction_id: string
-          closed_at: string
-          game_id: string
-          status: string
-          winning_bid: number
-          winning_table_number: number
-        }[]
-      }
-      close_game_auction_no_sale: {
-        Args: { command_id: string; game_code: string }
-        Returns: {
-          auction_id: string
-          closed_at: string
-          game_id: string
-          status: string
-          winning_bid: number
-          winning_table_number: number
         }[]
       }
       get_my_join_state: {
@@ -943,7 +701,6 @@ export type Database = {
           role_acknowledged: boolean
           scenario_title: string
           seat_number: number
-          table_coin_balance: number
           table_number: number
         }[]
       }
@@ -955,34 +712,12 @@ export type Database = {
           staff_member_id: string
         }[]
       }
-      get_staff_game_auction: {
-        Args: { game_code: string }
-        Returns: {
-          auction_id: string
-          bids: Json
-          current_highest_bid: number
-          current_highest_table_number: number
-          item_teaser: string
-          item_title: string
-          status: string
-          table_balances: Json
-          winning_bid: number
-          winning_table_number: number
-        }[]
-      }
       get_staff_game_clues: {
         Args: { game_code: string }
         Returns: {
           body: string
           table_number: number
           title: string
-        }[]
-      }
-      get_staff_game_coins: {
-        Args: { game_code: string }
-        Returns: {
-          balance: number
-          table_number: number
         }[]
       }
       get_staff_game_comparisons: {
@@ -1026,17 +761,6 @@ export type Database = {
           source_table_number: number
           target_table_number: number
           title: string
-        }[]
-      }
-      reset_game_for_testing: {
-        Args: { command_id: string; game_code: string }
-        Returns: {
-          command_id: string
-          game_code: string
-          game_id: string
-          lifecycle: string
-          narrative_phase: string
-          reset_at: string
         }[]
       }
       get_staff_game_roles: {
@@ -1091,30 +815,15 @@ export type Database = {
           venue_name: string
         }[]
       }
-      open_game_auction: {
+      reset_game_for_testing: {
         Args: { command_id: string; game_code: string }
         Returns: {
-          auction_id: string
-          game_id: string
-          item_id: string
-          opened_at: string
-          status: string
-        }[]
-      }
-      record_game_auction_bid: {
-        Args: {
-          amount: number
           command_id: string
           game_code: string
-          table_number: number
-        }
-        Returns: {
-          amount: number
-          auction_id: string
-          command_id: string
-          created_at: string
           game_id: string
-          table_number: number
+          lifecycle: string
+          narrative_phase: string
+          reset_at: string
         }[]
       }
       transition_game_lifecycle: {

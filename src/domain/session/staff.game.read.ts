@@ -74,9 +74,6 @@ export type StaffGamePressureRoute = {
   instruction: string
 }
 
-export type StaffGameTableCoins = { table_number: number; balance: number }
-export type StaffGameAuctionBid = { table_number: number; amount: number; created_at: string }
-export type StaffGameAuction = { auction_id: string | null; item_title: string; item_teaser: string; status: 'not_open' | 'open' | 'closed' | 'no_sale'; bids: StaffGameAuctionBid[]; current_highest_bid: number | null; current_highest_table_number: number | null; winning_table_number: number | null; winning_bid: number | null; table_balances: Array<{ table_number: number; balance: number }> }
 
 function unavailable<T>(): Result<T> {
   return fail(appError('TEMPORARY_UNAVAILABLE', 'Dati Regia non disponibili.', { retryable: false }))
@@ -143,20 +140,4 @@ export async function getStaffGamePressureRoutes(gameCode: string): Promise<Resu
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_pressure_routes', { game_code: gameCode })
   if (error) { logger.warn('Staff game pressure routes failed', { cause: error }); return mapReadError(error) }
   return ok(data ?? [])
-}
-
-export async function getStaffGameCoins(gameCode: string): Promise<Result<StaffGameTableCoins[]>> {
-  if (!staffSupabaseClient) return unavailable<StaffGameTableCoins[]>()
-  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_coins', { game_code: gameCode })
-  if (error) { logger.warn('Staff game coins failed', { cause: error }); return mapReadError(error) }
-  return ok(data ?? [])
-}
-
-export async function getStaffGameAuction(gameCode: string): Promise<Result<StaffGameAuction | null>> {
-  if (!staffSupabaseClient) return unavailable<StaffGameAuction | null>()
-  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_auction', { game_code: gameCode })
-  if (error) { logger.warn('Staff game auction failed', { cause: error }); return mapReadError(error) }
-  if (!data?.[0]) return ok(null)
-  const row = data[0] as StaffGameAuction & { bids: unknown; table_balances: unknown }
-  return ok({ ...row, bids: Array.isArray(row.bids) ? row.bids as StaffGameAuctionBid[] : [], table_balances: Array.isArray(row.table_balances) ? row.table_balances as StaffGameAuction['table_balances'] : [] })
 }

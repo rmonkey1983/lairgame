@@ -4,9 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues, getStaffGameComparisons, getStaffGamePressureRoutes, getStaffGameCoins, getStaffGameAuction, openGameAuction, recordGameAuctionBid, closeGameAuction, closeGameAuctionNoSale, assignGameRoles, resetGameForTesting, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), getStaffGameRoles: vi.fn(() => Promise.resolve({ ok: true, value: [] })), getStaffGameClues: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ table_number: number; title: string; body: string }> })), getStaffGameComparisons: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ source_table_number: number; target_table_number: number; instruction: string }> })), getStaffGamePressureRoutes: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ source_table_number: number; target_table_number: number; title: string; instruction: string }> })), getStaffGameCoins: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ table_number: number; balance: number }> })), getStaffGameAuction: vi.fn(() => Promise.resolve({ ok: true, value: null as unknown })), openGameAuction: vi.fn(), recordGameAuctionBid: vi.fn(), closeGameAuction: vi.fn(), closeGameAuctionNoSale: vi.fn(), assignGameRoles: vi.fn(), resetGameForTesting: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
-vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues, getStaffGameComparisons, getStaffGamePressureRoutes, getStaffGameCoins, getStaffGameAuction }))
-vi.mock('../../domain/session/staff.game.auction.command', () => ({ openGameAuction, recordGameAuctionBid, closeGameAuction, closeGameAuctionNoSale }))
+const { getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues, getStaffGameComparisons, getStaffGamePressureRoutes, assignGameRoles, resetGameForTesting, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), getStaffGameRoles: vi.fn(() => Promise.resolve({ ok: true, value: [] })), getStaffGameClues: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ table_number: number; title: string; body: string }> })), getStaffGameComparisons: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ source_table_number: number; target_table_number: number; instruction: string }> })), getStaffGamePressureRoutes: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ source_table_number: number; target_table_number: number; title: string; instruction: string }> })), assignGameRoles: vi.fn(), resetGameForTesting: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
+vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, getStaffGameClues, getStaffGameComparisons, getStaffGamePressureRoutes }))
 vi.mock('../../domain/session/staff.game.roles.command', () => ({ assignGameRoles }))
 vi.mock('../../domain/session/staff.game.reset.command', () => ({ resetGameForTesting }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
@@ -29,7 +28,7 @@ describe('AdminGamePage', () => {
     expect(subscribeToStaffGameState).toHaveBeenCalledWith('game-1', expect.any(Function))
   })
   it('shows the test reset only when enabled and requires confirmation', async () => {
-    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'auction', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', table_count: 5, player_count: 0, reset_enabled: true } })
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'pressure', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', table_count: 5, player_count: 0, reset_enabled: true } })
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderPage()
     const resetButton = await screen.findByRole('button', { name: 'Reset partita test' })
@@ -80,25 +79,6 @@ describe('AdminGamePage', () => {
     expect(await screen.findByRole('heading', { name: 'Confrontate i frammenti' })).toBeInTheDocument()
     expect(screen.getByText('Tavolo 1 → Tavolo 2')).toBeInTheDocument()
     expect(screen.getByText('Tavolo 5 → Tavolo 1')).toBeInTheDocument()
-  })
-  it('renders the authoritative BBL Coin balance for every table', async () => {
-    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', table_count: 5, player_count: 0 } })
-    getStaffGameCoins.mockResolvedValue({ ok: true, value: [1, 2, 3, 4, 5].map((table_number) => ({ table_number, balance: 20 })) })
-    renderPage()
-    expect(await screen.findByRole('heading', { name: 'BBL COIN' })).toBeInTheDocument()
-    expect(screen.getAllByText('Tavolo 1', { exact: false })).toHaveLength(2)
-    expect(screen.getAllByText('Tavolo 5', { exact: false })).toHaveLength(2)
-    expect(screen.getAllByText('20')).toHaveLength(5)
-  })
-  it('renders the MC-led auction controls and accepted bids', async () => {
-    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'auction', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', table_count: 5, player_count: 0 } })
-    getStaffGameAuction.mockResolvedValue({ ok: true, value: { auction_id: 'auction-1', item_title: 'La chiave', item_teaser: 'Un oggetto.', status: 'open', bids: [{ table_number: 2, amount: 8, created_at: '2026-09-10T10:00:00Z' }], current_highest_bid: 8, current_highest_table_number: 2, winning_table_number: null, winning_bid: null, table_balances: [] } })
-    renderPage()
-    expect(await screen.findByRole('heading', { name: 'La chiave' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Registra offerta' })).toBeInTheDocument()
-    expect(screen.getByText('Offerta massima: 8 · Tavolo 2')).toBeInTheDocument()
-    expect(screen.getByText('Tavolo 2 — 8')).toBeInTheDocument()
-    expect(screen.queryByText(/Riservato al Player/)).not.toBeInTheDocument()
   })
   it('renders occupied and empty seats across the selected tables', async () => {
     getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'checkin_open', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 2 } })
