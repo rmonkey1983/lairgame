@@ -30,6 +30,7 @@ function mapCommandError(error: { message: string }): Result<NarrativePhaseTrans
     STAFF_ACCESS_DENIED: { code: 'FORBIDDEN', message: 'Accesso Regia non autorizzato.' },
     GAME_NOT_FOUND: { code: 'NOT_FOUND', message: 'Partita non trovata.' },
     GAME_NOT_LIVE: { code: 'CONFLICT', message: 'La partita deve essere live per avanzare la fase narrativa.' },
+    ROLE_ASSIGNMENT_REQUIRED: { code: 'CONFLICT', message: 'Assegna i ruoli prima di avanzare alla rivelazione.' },
     STALE_GAME_STATE: { code: 'CONFLICT', message: 'La fase narrativa è cambiata. Dati aggiornati.' },
     INVALID_PHASE_TRANSITION: { code: 'CONFLICT', message: 'Avanzamento fase non consentito.' },
     CONFLICT: { code: 'CONFLICT', message: 'Comando non compatibile con lo stato corrente.' },

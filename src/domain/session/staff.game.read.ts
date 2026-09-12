@@ -35,6 +35,14 @@ export type StaffGameRosterPlayer = {
   joined_at: string
 }
 
+export type StaffGameRole = {
+  player_id: string
+  nickname: string
+  table_number: number
+  seat_number: number
+  role: 'liar' | 'accomplice' | 'scapegoat' | 'investigator'
+}
+
 function unavailable<T>(): Result<T> {
   return fail(appError('TEMPORARY_UNAVAILABLE', 'Dati Regia non disponibili.', { retryable: false }))
 }
@@ -72,4 +80,11 @@ export async function getStaffGameRoster(gameCode: string): Promise<Result<Staff
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_roster', { game_code: gameCode })
   if (error) { logger.warn('Staff game roster failed', { cause: error }); return mapReadError(error) }
   return ok(data ?? [])
+}
+
+export async function getStaffGameRoles(gameCode: string): Promise<Result<StaffGameRole[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGameRole[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_roles', { game_code: gameCode })
+  if (error) { logger.warn('Staff game roles failed', { cause: error }); return mapReadError(error) }
+  return ok((data ?? []) as StaffGameRole[])
 }

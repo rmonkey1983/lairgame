@@ -19,6 +19,11 @@ describe('staff narrative phase command service', () => {
     expect(result).toMatchObject({ ok: false, error: { code: 'CONFLICT', userMessage: 'La partita deve essere live per avanzare la fase narrativa.' } })
     expect(result.ok && result.value).toBeFalsy()
   })
+  it('maps ROLE_ASSIGNMENT_REQUIRED to a visible Regia message', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'ROLE_ASSIGNMENT_REQUIRED' } })
+    const result = await transitionGameNarrativePhase({ gameCode: 'TEST01', expectedPhase: 'lobby', targetPhase: 'role_reveal' })
+    expect(result).toMatchObject({ ok: false, error: { code: 'CONFLICT', userMessage: 'Assegna i ruoli prima di avanzare alla rivelazione.' } })
+  })
   it('recognizes only the internal stale-state cause', () => {
     expect(isStaleNarrativePhaseError({ code: 'CONFLICT', userMessage: 'safe', cause: { message: 'STALE_GAME_STATE' }, retryable: false })).toBe(true)
     expect(isStaleNarrativePhaseError({ code: 'CONFLICT', userMessage: 'safe', cause: { message: 'P0001' }, retryable: false })).toBe(false)

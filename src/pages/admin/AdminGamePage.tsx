@@ -1,131 +1,504 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { PageShell } from '../../components/common/PageShell'
-import { getAllowedLifecycleTransitions, getAllowedNarrativePhaseTransitions } from '../../domain/game/game.state-machine'
-import type { GameLifecycle, NarrativePhase } from '../../domain/game/game.types'
-import { isStaleLifecycleError, transitionGameLifecycle } from '../../domain/session/staff.game.command'
-import { isStaleNarrativePhaseError, transitionGameNarrativePhase } from '../../domain/session/staff.game.phase.command'
-import { getStaffGameOverview, getStaffGameRoster, type StaffGameOverview, type StaffGameRosterPlayer } from '../../domain/session/staff.game.read'
-import { subscribeToStaffGameState } from '../../domain/session/staff.game.realtime'
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { PageShell } from "../../components/common/PageShell";
+import {
+  getAllowedLifecycleTransitions,
+  getAllowedNarrativePhaseTransitions,
+} from "../../domain/game/game.state-machine";
+import type {
+  GameLifecycle,
+  NarrativePhase,
+} from "../../domain/game/game.types";
+import {
+  isStaleLifecycleError,
+  transitionGameLifecycle,
+} from "../../domain/session/staff.game.command";
+import {
+  isStaleNarrativePhaseError,
+  transitionGameNarrativePhase,
+} from "../../domain/session/staff.game.phase.command";
+import { assignGameRoles } from "../../domain/session/staff.game.roles.command";
+import {
+  getStaffGameOverview,
+  getStaffGameRoster,
+  getStaffGameRoles,
+  type StaffGameOverview,
+  type StaffGameRosterPlayer,
+  type StaffGameRole,
+} from "../../domain/session/staff.game.read";
+import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
 const lifecycleLabels: Record<GameLifecycle, string> = {
-  draft: 'Bozza', ready: 'Rendi pronta', checkin_open: 'Apri check-in', live: 'Avvia partita', paused: 'Metti in pausa', completed: 'Completa partita', aborted: 'Interrompi partita',
-}
-
-function lifecycleActionLabel(from: GameLifecycle, target: GameLifecycle): string {
-  if (target === 'live' && from === 'paused') return 'Riprendi partita'
-  return lifecycleLabels[target]
-}
-
+  draft: "Bozza",
+  ready: "Rendi pronta",
+  checkin_open: "Apri check-in",
+  live: "Avvia partita",
+  paused: "Metti in pausa",
+  completed: "Completa partita",
+  aborted: "Interrompi partita",
+};
 const narrativePhaseLabels: Record<NarrativePhase, string> = {
-  lobby: 'Lobby',
-  role_reveal: 'Role reveal',
-  briefing: 'Briefing',
-  discovery: 'Scoperta',
-  comparison: 'Confronto',
-  pressure: 'Pressione',
-  auction: 'Asta',
-  deliberation: 'Deliberazione',
-  final_vote: 'Voto finale',
-  reveal: 'Rivelazione',
-}
-
+  lobby: "Lobby",
+  role_reveal: "Role reveal",
+  briefing: "Briefing",
+  discovery: "Scoperta",
+  comparison: "Confronto",
+  pressure: "Pressione",
+  auction: "Asta",
+  deliberation: "Deliberazione",
+  final_vote: "Voto finale",
+  reveal: "Rivelazione",
+};
 const narrativePhaseActionLabels: Record<NarrativePhase, string> = {
-  lobby: 'Vai a scoperta ruoli',
-  role_reveal: 'Vai al briefing',
-  briefing: 'Vai a scoperta',
-  discovery: 'Vai al confronto',
-  comparison: 'Vai alla pressione',
-  pressure: 'Vai all’asta',
-  auction: 'Vai alla deliberazione',
-  deliberation: 'Vai al voto finale',
-  final_vote: 'Vai alla rivelazione',
-  reveal: '',
+  lobby: "Vai a scoperta ruoli",
+  role_reveal: "Vai al briefing",
+  briefing: "Vai a scoperta",
+  discovery: "Vai al confronto",
+  comparison: "Vai alla pressione",
+  pressure: "Vai all’asta",
+  auction: "Vai alla deliberazione",
+  deliberation: "Vai al voto finale",
+  final_vote: "Vai alla rivelazione",
+  reveal: "",
+};
+const roleLabels: Record<StaffGameRole["role"], string> = {
+  liar: "Bugiardo",
+  accomplice: "Complice",
+  scapegoat: "Capro espiatorio",
+  investigator: "Investigatore",
+};
+const seatsPerTable = 6;
+function lifecycleActionLabel(from: GameLifecycle, target: GameLifecycle) {
+  return target === "live" && from === "paused"
+    ? "Riprendi partita"
+    : lifecycleLabels[target];
 }
-
-const seatsPerTable = 6
 
 export default function AdminGamePage() {
-  const { gameCode } = useParams()
-  const [overview, setOverview] = useState<StaffGameOverview | null>(null)
-  const [roster, setRoster] = useState<StaffGameRosterPlayer[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [commandPending, setCommandPending] = useState(false)
-  const [phaseCommandPending, setPhaseCommandPending] = useState(false)
-
+  const { gameCode } = useParams();
+  const [overview, setOverview] = useState<StaffGameOverview | null>(null);
+  const [roster, setRoster] = useState<StaffGameRosterPlayer[] | null>(null);
+  const [roles, setRoles] = useState<StaffGameRole[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [commandPending, setCommandPending] = useState(false);
+  const [phaseCommandPending, setPhaseCommandPending] = useState(false);
+  const [roleCommandPending, setRoleCommandPending] = useState(false);
   const loadOverview = useCallback(async () => {
-    if (!gameCode) return null
-    const result = await getStaffGameOverview(gameCode)
-    if (result.ok) { setOverview(result.value); setError(null) }
-    else setError(result.error.userMessage)
-    return result
-  }, [gameCode])
-
+    if (!gameCode) return null;
+    const r = await getStaffGameOverview(gameCode);
+    if (r.ok) {
+      setOverview(r.value);
+      setError(null);
+    } else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   const loadRoster = useCallback(async () => {
-    if (!gameCode) return null
-    const result = await getStaffGameRoster(gameCode)
-    if (result.ok) setRoster(result.value)
-    else setError(result.error.userMessage)
-    return result
-  }, [gameCode])
-
+    if (!gameCode) return null;
+    const r = await getStaffGameRoster(gameCode);
+    if (r.ok) setRoster(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
+  const loadRoles = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffGameRoles(gameCode);
+    if (r.ok) setRoles(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
-    if (!gameCode) return
-    let active = true
-    let unsubscribe: () => void = () => undefined
-    void getStaffGameOverview(gameCode).then((result) => {
-      if (!active) return
-      if (result.ok) {
-        setOverview(result.value)
-        setError(null)
-        void loadRoster()
-        unsubscribe = subscribeToStaffGameState(result.value.id, () => { void Promise.all([loadOverview(), loadRoster()]) })
-      } else setError(result.error.userMessage)
-    })
-    return () => { active = false; unsubscribe() }
-  }, [gameCode, loadOverview, loadRoster])
-
-  async function handleTransition(targetLifecycle: GameLifecycle) {
-    if (!overview || !gameCode || commandPending) return
-    if (targetLifecycle === 'completed' || targetLifecycle === 'aborted') {
-      const confirmed = window.confirm(`Confermi: ${lifecycleLabels[targetLifecycle]}?`)
-      if (!confirmed) return
+    if (!gameCode) return;
+    let active = true;
+    let unsubscribe: () => void = () => undefined;
+    void getStaffGameOverview(gameCode).then((r) => {
+      if (!active) return;
+      if (!r.ok) {
+        setError(r.error.userMessage);
+        return;
+      }
+      setOverview(r.value);
+      setError(null);
+      void Promise.all([loadRoster(), loadRoles()]);
+      unsubscribe = subscribeToStaffGameState(r.value.id, () => {
+        void Promise.all([loadOverview(), loadRoster(), loadRoles()]);
+      });
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [gameCode, loadOverview, loadRoster, loadRoles]);
+  async function handleTransition(target: GameLifecycle) {
+    if (!overview || !gameCode || commandPending) return;
+    if (
+      (target === "completed" || target === "aborted") &&
+      !window.confirm(`Confermi: ${lifecycleLabels[target]}?`)
+    )
+      return;
+    setCommandPending(true);
+    setError(null);
+    const r = await transitionGameLifecycle({
+      gameCode,
+      expectedLifecycle: overview.lifecycle as GameLifecycle,
+      targetLifecycle: target,
+      commandId: crypto.randomUUID(),
+    });
+    if (!r.ok) {
+      if (isStaleLifecycleError(r.error)) {
+        const fresh = await loadOverview();
+        if (fresh?.ok) setNotice(r.error.userMessage);
+      } else setError(r.error.userMessage);
+      setCommandPending(false);
+      return;
     }
-    setCommandPending(true); setError(null); setNotice(null)
-    const result = await transitionGameLifecycle({ gameCode, expectedLifecycle: overview.lifecycle as GameLifecycle, targetLifecycle, commandId: crypto.randomUUID() })
-    if (!result.ok) {
-      if (isStaleLifecycleError(result.error)) {
-        const refreshed = await loadOverview()
-        if (refreshed?.ok) setNotice(result.error.userMessage)
-      } else setError(result.error.userMessage)
-      setCommandPending(false)
-      return
-    }
-    const refreshed = await loadOverview()
-    if (refreshed?.ok) setNotice('Lifecycle aggiornato.')
-    setCommandPending(false)
+    await loadOverview();
+    setNotice("Lifecycle aggiornato.");
+    setCommandPending(false);
   }
-
-  async function handleNarrativePhaseTransition(targetPhase: NarrativePhase) {
-    if (!overview || !gameCode || phaseCommandPending) return
-    setPhaseCommandPending(true); setError(null); setNotice(null)
-    const result = await transitionGameNarrativePhase({ gameCode, expectedPhase: overview.narrative_phase as NarrativePhase, targetPhase, commandId: crypto.randomUUID() })
-    if (!result.ok) {
-      if (isStaleNarrativePhaseError(result.error)) {
-        const refreshed = await loadOverview()
-        if (refreshed?.ok) setNotice(result.error.userMessage)
-      } else setError(result.error.userMessage)
-      setPhaseCommandPending(false)
-      return
+  async function handlePhase(target: NarrativePhase) {
+    if (!overview || !gameCode || phaseCommandPending) return;
+    setPhaseCommandPending(true);
+    setError(null);
+    const r = await transitionGameNarrativePhase({
+      gameCode,
+      expectedPhase: overview.narrative_phase as NarrativePhase,
+      targetPhase: target,
+      commandId: crypto.randomUUID(),
+    });
+    if (!r.ok) {
+      if (isStaleNarrativePhaseError(r.error)) {
+        const fresh = await loadOverview();
+        if (fresh?.ok) setNotice(r.error.userMessage);
+      } else setError(r.error.userMessage);
+      setPhaseCommandPending(false);
+      return;
     }
-    const refreshed = await loadOverview()
-    if (refreshed?.ok) setNotice('Fase narrativa aggiornata.')
-    setPhaseCommandPending(false)
+    await loadOverview();
+    setNotice("Fase narrativa aggiornata.");
+    setPhaseCommandPending(false);
   }
-
-  const allowedTransitions = overview ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle) : []
-  const allowedNarrativeTransitions = overview ? getAllowedNarrativePhaseTransitions(overview.narrative_phase as NarrativePhase) : []
-  const nextNarrativePhase = allowedNarrativeTransitions[0]
-  return <PageShell eyebrow="Control Room · game context" title="Regia"><div className="max-w-2xl"><Link className="text-sm text-primary underline underline-offset-4" to="/admin/games">← Torna alle partite</Link><p className="mt-8 text-sm uppercase tracking-[0.16em] text-muted">Game selezionato</p><p className="mt-2 font-mono text-3xl font-semibold text-primary">{gameCode}</p><div className="mt-8" aria-live="polite">{!overview && !error && <p role="status" className="text-muted">Caricamento overview…</p>}{error && <p role="alert" className="text-danger">{error}</p>}{notice && <p role="status" className="text-success">{notice}</p>}{overview && <><p className="text-xl font-semibold text-text">{overview.event_name}</p><dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2"><div><dt className="text-sm text-muted">Lifecycle</dt><dd className="mt-1 font-semibold">{overview.lifecycle}</dd></div><div><dt className="text-sm text-muted">Narrative phase</dt><dd className="mt-1 font-semibold">{narrativePhaseLabels[overview.narrative_phase as NarrativePhase] ?? overview.narrative_phase}</dd></div><div><dt className="text-sm text-muted">Partecipanti</dt><dd className="mt-1 text-2xl font-semibold text-primary">{overview.player_count}</dd></div><div><dt className="text-sm text-muted">Tavoli</dt><dd className="mt-1 text-2xl font-semibold text-primary">{overview.table_count}</dd></div>{overview.venue_name && <div><dt className="text-sm text-muted">Venue</dt><dd className="mt-1 font-semibold">{overview.venue_name}</dd></div>}</dl><section className="mt-10 border-t border-border pt-6" aria-labelledby="roster-title"><h2 id="roster-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">Partecipanti</h2>{roster ? <><p className="mt-2 text-sm text-muted">{roster.length} / {overview.table_count * seatsPerTable} posti occupati</p><div className="mt-5 grid gap-5">{Array.from({ length: overview.table_count }, (_, tableIndex) => { const tableNumber = tableIndex + 1; return <section key={tableNumber} aria-labelledby={`table-${tableNumber}-title`}><h3 id={`table-${tableNumber}-title`} className="font-semibold">Tavolo {tableNumber}</h3><ol className="mt-2 grid gap-2">{Array.from({ length: seatsPerTable }, (_, seatIndex) => { const seatNumber = seatIndex + 1; const player = roster.find((candidate) => candidate.table_number === tableNumber && candidate.seat_number === seatNumber); return <li key={seatNumber} className="flex items-center justify-between border border-border px-3 py-2 text-sm"><span>Posto {seatNumber}</span><span className={player ? 'font-semibold text-text' : 'text-muted'}>{player?.nickname ?? 'Posto vuoto'}</span></li> })}</ol></section> })}</div></> : <p role="status" className="mt-4 text-sm text-muted">Caricamento partecipanti…</p>}</section><section className="mt-10 border-t border-border pt-6" aria-labelledby="lifecycle-control-title"><h2 id="lifecycle-control-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">Controllo lifecycle</h2><p className="mt-2 text-sm text-muted">Stato attuale: <span className="font-semibold text-text">{overview.lifecycle}</span></p>{allowedTransitions.length > 0 ? <div className="mt-5 flex flex-wrap gap-3">{allowedTransitions.map((target) => <button key={target} className={`action ${target === 'completed' || target === 'aborted' ? 'action-secondary' : ''}`} type="button" disabled={commandPending} onClick={() => void handleTransition(target)}>{commandPending ? 'Operazione in corso…' : lifecycleActionLabel(overview.lifecycle as GameLifecycle, target)}</button>)}</div> : <p className="mt-5 text-sm text-muted">Nessuna transizione disponibile.</p>}{commandPending && <p role="status" className="mt-4 text-sm text-muted">Aggiornamento lifecycle in corso…</p>}</section><section className="mt-10 border-t border-border pt-6" aria-labelledby="narrative-phase-control-title"><h2 id="narrative-phase-control-title" className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">Fase narrativa</h2><dl className="mt-4 grid gap-3 sm:grid-cols-2"><div><dt className="text-sm text-muted">Fase corrente</dt><dd className="mt-1 font-semibold">{narrativePhaseLabels[overview.narrative_phase as NarrativePhase] ?? overview.narrative_phase}</dd></div><div><dt className="text-sm text-muted">Prossima fase consentita</dt><dd className="mt-1 font-semibold">{nextNarrativePhase ? narrativePhaseLabels[nextNarrativePhase] : 'Nessuna'}</dd></div></dl>{nextNarrativePhase ? <><button className="action mt-5" type="button" disabled={phaseCommandPending || overview.lifecycle !== 'live'} onClick={() => void handleNarrativePhaseTransition(nextNarrativePhase)}>{phaseCommandPending ? 'Operazione in corso…' : narrativePhaseActionLabels[overview.narrative_phase as NarrativePhase]}</button>{overview.lifecycle !== 'live' && <p className="mt-3 text-sm text-muted">Disponibile solo con lifecycle live.</p>}{phaseCommandPending && <p role="status" className="mt-3 text-sm text-muted">Aggiornamento fase narrativa in corso…</p>}</> : <p className="mt-5 text-sm text-muted">Nessuna fase narrativa successiva.</p>}</section></>}</div></div></PageShell>
+  async function handleAssignRoles() {
+    if (!gameCode || roleCommandPending) return;
+    setRoleCommandPending(true);
+    setError(null);
+    const r = await assignGameRoles(gameCode);
+    await Promise.all([loadOverview(), loadRoles()]);
+    if (r.ok) setNotice("Ruoli assegnati.");
+    else setError(r.error.userMessage);
+    setRoleCommandPending(false);
+  }
+  const allowed = overview
+    ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle)
+    : [];
+  const narrativeAllowed = overview
+    ? getAllowedNarrativePhaseTransitions(
+        overview.narrative_phase as NarrativePhase,
+      )
+    : [];
+  const nextPhase = narrativeAllowed[0];
+  const rolesAssigned = Boolean(
+    overview &&
+    (overview.player_count === 0 ||
+      (roles &&
+        roster &&
+        overview.player_count >= 3 &&
+        roles.length === overview.player_count &&
+        roles.length === roster.length)),
+  );
+  const canAssign =
+    overview?.lifecycle === "live" &&
+    overview.narrative_phase === "lobby" &&
+    !rolesAssigned;
+  return (
+    <PageShell eyebrow="Control Room · game context" title="Regia">
+      <div className="max-w-2xl">
+        <Link
+          className="text-sm text-primary underline-offset-4"
+          to="/admin/games"
+        >
+          ← Torna alle partite
+        </Link>
+        <p className="mt-8 text-sm uppercase tracking-[0.16em] text-muted">
+          Game selezionato
+        </p>
+        <p className="mt-2 font-mono text-3xl font-semibold text-primary">
+          {gameCode}
+        </p>
+        <div className="mt-8" aria-live="polite">
+          {!overview && !error && (
+            <p role="status" className="text-muted">
+              Caricamento overview…
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-danger">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="text-success">
+              {notice}
+            </p>
+          )}
+          {commandPending && (
+            <p role="status" className="mt-4 text-sm text-muted">
+              Aggiornamento lifecycle in corso…
+            </p>
+          )}
+          {phaseCommandPending && (
+            <p role="status" className="mt-4 text-sm text-muted">
+              Aggiornamento fase narrativa in corso…
+            </p>
+          )}
+          {overview && (
+            <>
+              <p className="text-xl font-semibold text-text">
+                {overview.event_name}
+              </p>
+              <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm text-muted">Lifecycle</dt>
+                  <dd className="mt-1 font-semibold">{overview.lifecycle}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Narrative phase</dt>
+                  <dd className="mt-1 font-semibold">
+                    {narrativePhaseLabels[
+                      overview.narrative_phase as NarrativePhase
+                    ] ?? overview.narrative_phase}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Partecipanti</dt>
+                  <dd className="mt-1 text-2xl font-semibold text-primary">
+                    {overview.player_count}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Tavoli</dt>
+                  <dd className="mt-1 text-2xl font-semibold text-primary">
+                    {overview.table_count}
+                  </dd>
+                </div>
+              </dl>
+              <section
+                className="mt-10 border-t border-border pt-6"
+                aria-labelledby="roster-title"
+              >
+                <h2
+                  id="roster-title"
+                  className="text-sm font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Partecipanti
+                </h2>
+                {roster ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted">
+                      {roster.length} / {overview.table_count * seatsPerTable}{" "}
+                      posti occupati
+                    </p>
+                    <div className="mt-5 grid gap-5">
+                      {Array.from({ length: overview.table_count }, (_, ti) => (
+                        <section key={ti + 1}>
+                          <h3 className="font-semibold">Tavolo {ti + 1}</h3>
+                          <ol className="mt-2 grid gap-2">
+                            {Array.from({ length: seatsPerTable }, (_, si) => {
+                              const player = roster.find(
+                                (p) =>
+                                  p.table_number === ti + 1 &&
+                                  p.seat_number === si + 1,
+                              );
+                              return (
+                                <li
+                                  key={si + 1}
+                                  className="flex items-center justify-between border border-border px-3 py-2 text-sm"
+                                >
+                                  <span>Posto {si + 1}</span>
+                                  <span
+                                    className={
+                                      player
+                                        ? "font-semibold text-text"
+                                        : "text-muted"
+                                    }
+                                  >
+                                    {player?.nickname ?? "Posto vuoto"}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        </section>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p role="status" className="mt-4 text-sm text-muted">
+                    Caricamento partecipanti…
+                  </p>
+                )}
+              </section>
+              {canAssign && (
+                <section
+                  className="mt-10 border-t border-border pt-6"
+                  aria-labelledby="roles-control-title"
+                >
+                  <h2
+                    id="roles-control-title"
+                    className="text-sm font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Ruoli
+                  </h2>
+                  <p className="mt-2 text-sm text-muted">
+                    {overview.player_count < 3
+                      ? "Servono almeno 3 partecipanti."
+                      : "Congela il roster assegnando i ruoli."}
+                  </p>
+                  <button
+                    className="action mt-5"
+                    type="button"
+                    disabled={
+                      roleCommandPending ||
+                      overview.player_count < 3 ||
+                      roles === null
+                    }
+                    onClick={() => void handleAssignRoles()}
+                  >
+                    {roleCommandPending
+                      ? "Assegnazione in corso…"
+                      : "Assegna ruoli"}
+                  </button>
+                </section>
+              )}
+              {rolesAssigned && (
+                <section
+                  className="mt-10 border-t border-border pt-6"
+                  aria-labelledby="assigned-roles-title"
+                >
+                  <h2
+                    id="assigned-roles-title"
+                    className="text-sm font-semibold uppercase tracking-[0.16em] text-muted"
+                  >
+                    Ruoli assegnati
+                  </h2>
+                  <ul className="mt-4 grid gap-2">
+                    {roles?.map((p) => (
+                      <li
+                        key={p.player_id}
+                        className="flex items-center justify-between border border-border px-3 py-2 text-sm"
+                      >
+                        <span className="font-semibold">{p.nickname}</span>
+                        <span>
+                          {roleLabels[p.role]} · Tavolo {p.table_number}, posto{" "}
+                          {p.seat_number}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <section
+                className="mt-10 border-t border-border pt-6"
+                aria-labelledby="lifecycle-control-title"
+              >
+                <h2
+                  id="lifecycle-control-title"
+                  className="text-sm font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Controllo lifecycle
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  Stato attuale:{" "}
+                  <span className="font-semibold text-text">
+                    {overview.lifecycle}
+                  </span>
+                </p>
+                {allowed.length ? (
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {allowed.map((target) => (
+                      <button
+                        key={target}
+                        className="action"
+                        type="button"
+                        disabled={commandPending}
+                        onClick={() => void handleTransition(target)}
+                      >
+                        {commandPending
+                          ? "Operazione in corso…"
+                          : lifecycleActionLabel(
+                              overview.lifecycle as GameLifecycle,
+                              target,
+                            )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-5 text-sm text-muted">
+                    Nessuna transizione disponibile.
+                  </p>
+                )}
+                {overview.lifecycle !== "live" && allowed.length > 0 && (
+                  <p className="mt-3 text-sm text-muted">
+                    Disponibile solo con lifecycle live.
+                  </p>
+                )}
+              </section>
+              <section
+                className="mt-10 border-t border-border pt-6"
+                aria-labelledby="narrative-phase-control-title"
+              >
+                <h2
+                  id="narrative-phase-control-title"
+                  className="text-sm font-semibold uppercase tracking-[0.16em] text-muted"
+                >
+                  Fase narrativa
+                </h2>
+                <p className="mt-4 text-sm text-muted">
+                  Fase corrente:{" "}
+                  <span className="font-semibold text-text">
+                    {narrativePhaseLabels[
+                      overview.narrative_phase as NarrativePhase
+                    ] ?? overview.narrative_phase}
+                  </span>
+                </p>
+                {nextPhase ? (
+                  <>
+                    <button
+                      className={`action mt-5 ${
+                        nextPhase === "role_reveal" && !rolesAssigned
+                          ? "cursor-not-allowed opacity-50"
+                          : ""
+                      }`}
+                      type="button"
+                      disabled={
+                        phaseCommandPending ||
+                        overview.lifecycle !== "live" ||
+                        (nextPhase === "role_reveal" && !rolesAssigned)
+                      }
+                      onClick={() => void handlePhase(nextPhase)}
+                    >
+                      {phaseCommandPending
+                        ? "Operazione in corso…"
+                        : narrativePhaseActionLabels[
+                            overview.narrative_phase as NarrativePhase
+                          ]}
+                    </button>
+                    {nextPhase === "role_reveal" && !rolesAssigned && (
+                      <p className="mt-3 text-sm text-muted">
+                        Assegna i ruoli prima di avanzare.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-5 text-sm text-muted">
+                    Nessuna fase narrativa successiva.
+                  </p>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </PageShell>
+  );
 }

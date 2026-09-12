@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminGamePage from './AdminGamePage'
 
-const { getStaffGameOverview, getStaffGameRoster, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
-vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster }))
+const { getStaffGameOverview, getStaffGameRoster, getStaffGameRoles, assignGameRoles, transitionGameLifecycle, isStaleLifecycleError, transitionGameNarrativePhase, isStaleNarrativePhaseError, subscribeToStaffGameState } = vi.hoisted(() => ({ getStaffGameOverview: vi.fn(), getStaffGameRoster: vi.fn(() => Promise.resolve({ ok: true, value: [] as Array<{ player_id: string; nickname: string; table_number: number; seat_number: number; joined_at: string }> })), getStaffGameRoles: vi.fn(() => Promise.resolve({ ok: true, value: [] })), assignGameRoles: vi.fn(), transitionGameLifecycle: vi.fn(), isStaleLifecycleError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), transitionGameNarrativePhase: vi.fn(), isStaleNarrativePhaseError: vi.fn((error: { cause?: { message?: string } }) => error.cause?.message === 'STALE_GAME_STATE'), subscribeToStaffGameState: vi.fn((gameId: string, onStateChanged: () => void, onStatus?: (status: string) => void) => { void gameId; void onStateChanged; void onStatus; return vi.fn() }) }))
+vi.mock('../../domain/session/staff.game.read', () => ({ getStaffGameOverview, getStaffGameRoster, getStaffGameRoles }))
+vi.mock('../../domain/session/staff.game.roles.command', () => ({ assignGameRoles }))
 vi.mock('../../domain/session/staff.game.command', () => ({ transitionGameLifecycle, isStaleLifecycleError }))
 vi.mock('../../domain/session/staff.game.phase.command', () => ({ transitionGameNarrativePhase, isStaleNarrativePhaseError }))
 vi.mock('../../domain/session/staff.game.realtime', () => ({ subscribeToStaffGameState }))
@@ -183,6 +184,30 @@ describe('AdminGamePage', () => {
     renderPage()
     expect(await screen.findByRole('button', { name: 'Vai a scoperta ruoli' })).toBeDisabled()
     expect(screen.getByText('Disponibile solo con lifecycle live.')).toBeInTheDocument()
+    expect(transitionGameNarrativePhase).not.toHaveBeenCalled()
+  })
+  it('offers role assignment in live lobby and refetches the authoritative roles', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 3 } })
+    assignGameRoles.mockResolvedValue({ ok: true, value: { player_count: 3 } })
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Assegna ruoli' }))
+    expect(assignGameRoles).toHaveBeenCalledWith('TEST01')
+    expect(transitionGameNarrativePhase).not.toHaveBeenCalled()
+    expect(getStaffGameRoles).toHaveBeenCalled()
+  })
+  it('disables role reveal until the role snapshot covers the roster', async () => {
+    getStaffGameOverview.mockResolvedValue({ ok: true, value: { id: 'game-1', code: 'TEST01', lifecycle: 'live', narrative_phase: 'lobby', created_at: '2026-09-10T10:00:00Z', event_name: 'Local Event', starts_at: null, venue_name: null, table_count: 5, player_count: 3 } })
+    getStaffGameRoster.mockResolvedValue({ ok: true, value: [
+      { player_id: 'p1', nickname: 'Alice', table_number: 1, seat_number: 1, joined_at: '2026-09-10T00:00:00Z' },
+      { player_id: 'p2', nickname: 'Bob', table_number: 1, seat_number: 2, joined_at: '2026-09-10T00:00:00Z' },
+      { player_id: 'p3', nickname: 'Cara', table_number: 1, seat_number: 3, joined_at: '2026-09-10T00:00:00Z' },
+    ] })
+    renderPage()
+    const button = await screen.findByRole('button', { name: 'Vai a scoperta ruoli' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveClass('opacity-50')
+    expect(screen.getByText('Assegna i ruoli prima di avanzare.')).toBeInTheDocument()
+    await userEvent.click(button)
     expect(transitionGameNarrativePhase).not.toHaveBeenCalled()
   })
 })

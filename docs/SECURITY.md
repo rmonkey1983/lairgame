@@ -41,6 +41,8 @@ Il read model Staff mantiene lo stesso confine: wrapper pubblici invoker, implem
 
 Il roster Staff mantiene il confine operativo: restituisce nickname, tavolo, posto e timestamp di ingresso, mai `auth_user_id`; la RPC verifica nuovamente Staff Auth persistente e membership attiva.
 
+Le assegnazioni ruolo sono conservate in una tabella con RLS e privilegi browser revocati. Solo le RPC private chiamate dai wrapper invoker verificano Staff attivo; nessuna API Player o CRUD client espone i ruoli.
+
 Il lifecycle command autorizza nuovamente la membership Staff attiva nel database, non accetta identità privilegiate dal browser e non concede `UPDATE` diretto su `games`. Il lock di riga protegge la verifica dello stato atteso; `command_id` impedisce duplicati e il record audit viene scritto nella stessa transazione della mutazione.
 
 Il narrative phase command riapplica gli stessi controlli Staff e rifiuta ogni richiesta quando il lifecycle non è `live`. Il lock di riga serializza i comandi sul Game; `expected_phase` rifiuta stale state e una matrice server-side impedisce skip/backward transition. La tabella `game_narrative_phase_commands` è RLS-enabled, senza grant browser, e il retry identico restituisce l'audit esistente senza una seconda mutazione o registrazione.

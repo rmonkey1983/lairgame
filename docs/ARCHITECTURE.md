@@ -43,6 +43,8 @@ La Regia usa `list_staff_games` e `get_staff_game_overview` come read model snap
 
 La Regia legge il roster con `get_staff_game_roster` e lo mostra per i cinque tavoli e sei posti. Il join Player reale emette lo stesso wake-up `game_state_changed`; la Regia rifà overview e roster, senza usare il payload come stato.
 
+In `live`/`lobby` la Regia può assegnare una sola volta i ruoli tramite comando server-authoritative. Il wake-up è unico per comando e la Regia rifà overview, roster e ruoli; `role_reveal` richiede una assegnazione completa.
+
 Il comando lifecycle segue il confine server-authoritative: PostgreSQL blocca la riga Game, verifica `expected_lifecycle`, applica solo la matrice approvata e scrive l'audit nella stessa transazione. `command_id` rende il retry idempotente; la state machine frontend filtra soltanto l'UX.
 
 Il comando fase narrativa mantiene lo stesso confine: è accettato solo con lifecycle `live`, blocca la riga Game, verifica `expected_phase` e consente esclusivamente il passaggio alla fase successiva nella matrice `lobby`→`role_reveal`→`briefing`→`discovery`→`comparison`→`pressure`→`auction`→`deliberation`→`final_vote`→`reveal`. La mutazione e l'audit append-only sono atomici; `reveal` è terminale e il client mostra una sola azione successiva derivata dallo snapshot.

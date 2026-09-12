@@ -15,3 +15,5 @@ RPC command commit → Broadcast → Regia refetch `get_staff_game_overview()` �
 Il topic è private e il receive è autorizzato su `realtime.messages`: Staff attivo per ogni Game; Player corrente solo per il proprio Game. Non esiste policy client `INSERT`, quindi i client non possono broadcastare. Unsubscribe su unmount/game change/logout; una subscription per topic/key.
 
 Realtime comunica cambiamento, non stato. Nessun polling o Presence in questa milestone; il fallback è il refetch iniziale/azione manuale della Regia.
+
+L’assegnazione ruoli invia un solo Broadcast privato `game_state_changed` sul topic `game:<game_id>` dopo il commit logico; il payload contiene solo `kind` e non è fonte di verità.

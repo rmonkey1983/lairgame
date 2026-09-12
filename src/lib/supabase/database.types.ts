@@ -126,6 +126,81 @@ export type Database = {
           },
         ]
       }
+      game_role_assignment_commands: {
+        Row: {
+          command_id: string
+          created_at: string
+          game_id: string
+          player_count: number
+          staff_member_id: string
+        }
+        Insert: {
+          command_id: string
+          created_at?: string
+          game_id: string
+          player_count: number
+          staff_member_id: string
+        }
+        Update: {
+          command_id?: string
+          created_at?: string
+          game_id?: string
+          player_count?: number
+          staff_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_role_assignment_commands_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_role_assignment_commands_staff_member_id_fkey"
+            columns: ["staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_role_assignments: {
+        Row: {
+          assigned_at: string
+          game_id: string
+          player_id: string
+          role: string
+        }
+        Insert: {
+          assigned_at?: string
+          game_id: string
+          player_id: string
+          role: string
+        }
+        Update: {
+          assigned_at?: string
+          game_id?: string
+          player_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_role_assignments_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_role_assignments_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_tables: {
         Row: {
           created_at: string
@@ -276,6 +351,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_game_roles: {
+        Args: { command_id: string; game_code: string }
+        Returns: {
+          assigned_at: string
+          command_id: string
+          game_code: string
+          game_id: string
+          player_count: number
+        }[]
+      }
       get_my_join_state: {
         Args: { p_game_code: string }
         Returns: {
@@ -309,6 +394,16 @@ export type Database = {
           starts_at: string
           table_count: number
           venue_name: string
+        }[]
+      }
+      get_staff_game_roles: {
+        Args: { game_code: string }
+        Returns: {
+          nickname: string
+          player_id: string
+          role: string
+          seat_number: number
+          table_number: number
         }[]
       }
       get_staff_game_roster: {
