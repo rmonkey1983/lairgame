@@ -24,6 +24,11 @@ export type PlayerGameState = {
   comparison_body: string | null
   comparison_target_table_number: number | null
   comparison_instruction: string | null
+  pressure_title: string | null
+  pressure_body: string | null
+  pressure_target_table_number: number | null
+  pressure_route_title: string | null
+  pressure_instruction: string | null
 }
 
 function mapError(error: { message: string }): Result<never> {

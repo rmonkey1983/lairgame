@@ -457,6 +457,44 @@ export type Database = {
           },
         ]
       }
+      scenario_table_pressure_routes: {
+        Row: {
+          created_at: string
+          id: string
+          instruction: string
+          scenario_version_id: string
+          source_table_number: number
+          target_table_number: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instruction: string
+          scenario_version_id: string
+          source_table_number: number
+          target_table_number: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instruction?: string
+          scenario_version_id?: string
+          source_table_number?: number
+          target_table_number?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_table_pressure_routes_scenario_version_id_fkey"
+            columns: ["scenario_version_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenario_versions: {
         Row: {
           briefing_body: string
@@ -467,6 +505,8 @@ export type Database = {
           discovery_body: string
           discovery_title: string
           id: string
+          pressure_body: string
+          pressure_title: string
           published_at: string | null
           scenario_id: string
           status: string
@@ -481,6 +521,8 @@ export type Database = {
           discovery_body: string
           discovery_title: string
           id?: string
+          pressure_body: string
+          pressure_title: string
           published_at?: string | null
           scenario_id: string
           status: string
@@ -495,6 +537,8 @@ export type Database = {
           discovery_body?: string
           discovery_title?: string
           id?: string
+          pressure_body?: string
+          pressure_title?: string
           published_at?: string | null
           scenario_id?: string
           status?: string
@@ -609,6 +653,11 @@ export type Database = {
           lifecycle: string
           narrative_phase: string
           nickname: string
+          pressure_body: string
+          pressure_instruction: string
+          pressure_route_title: string
+          pressure_target_table_number: number
+          pressure_title: string
           role: string
           role_acknowledged: boolean
           scenario_title: string
@@ -656,11 +705,22 @@ export type Database = {
           lifecycle: string
           narrative_phase: string
           player_count: number
+          pressure_body: string
+          pressure_title: string
           scenario_title: string
           scenario_version_number: number
           starts_at: string
           table_count: number
           venue_name: string
+        }[]
+      }
+      get_staff_game_pressure_routes: {
+        Args: { game_code: string }
+        Returns: {
+          instruction: string
+          source_table_number: number
+          target_table_number: number
+          title: string
         }[]
       }
       get_staff_game_roles: {

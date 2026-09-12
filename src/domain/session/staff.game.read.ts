@@ -33,6 +33,8 @@ export type StaffGameOverview = {
   discovery_body: string | null
   comparison_title: string | null
   comparison_body: string | null
+  pressure_title: string | null
+  pressure_body: string | null
 }
 
 export type StaffGameRosterPlayer = {
@@ -61,6 +63,13 @@ export type StaffGameClue = {
 export type StaffGameComparison = {
   source_table_number: number
   target_table_number: number
+  instruction: string
+}
+
+export type StaffGamePressureRoute = {
+  source_table_number: number
+  target_table_number: number
+  title: string
   instruction: string
 }
 
@@ -121,5 +130,12 @@ export async function getStaffGameComparisons(gameCode: string): Promise<Result<
   if (!staffSupabaseClient) return unavailable<StaffGameComparison[]>()
   const { data, error } = await staffSupabaseClient.rpc('get_staff_game_comparisons', { game_code: gameCode })
   if (error) { logger.warn('Staff game comparisons failed', { cause: error }); return mapReadError(error) }
+  return ok(data ?? [])
+}
+
+export async function getStaffGamePressureRoutes(gameCode: string): Promise<Result<StaffGamePressureRoute[]>> {
+  if (!staffSupabaseClient) return unavailable<StaffGamePressureRoute[]>()
+  const { data, error } = await staffSupabaseClient.rpc('get_staff_game_pressure_routes', { game_code: gameCode })
+  if (error) { logger.warn('Staff game pressure routes failed', { cause: error }); return mapReadError(error) }
   return ok(data ?? [])
 }

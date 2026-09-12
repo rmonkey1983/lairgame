@@ -104,4 +104,13 @@ describe('PlayerShellPage', () => {
     expect(screen.getByText('Il vostro frammento')).toBeInTheDocument()
     expect(screen.queryByText('Tavolo 1')).not.toBeInTheDocument()
   })
+
+  it('renders the directed Pressure pass without a response control', async () => {
+    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'pressure', nickname: 'Player', table_number: 1, seat_number: 1, role: 'investigator', role_acknowledged: true, scenario_title: 'Scenario', pressure_title: 'Mettete sotto pressione', pressure_body: 'Fate una domanda diretta.', clue_title: 'Il bicchiere', clue_body: 'Il vostro frammento.', pressure_target_table_number: 3, pressure_route_title: 'La domanda scomoda', pressure_instruction: 'Chiedete a voce al Tavolo 3.' } })
+    renderShell()
+    expect(await screen.findByRole('heading', { name: 'Mettete sotto pressione' })).toBeInTheDocument()
+    expect(screen.getByText('Tavolo 3')).toBeInTheDocument()
+    expect(screen.getByText('La domanda scomoda')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
 })

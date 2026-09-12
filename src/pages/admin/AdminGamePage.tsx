@@ -23,12 +23,14 @@ import {
   getStaffGameRoster,
   getStaffGameClues,
   getStaffGameComparisons,
+  getStaffGamePressureRoutes,
   getStaffGameRoles,
   type StaffGameOverview,
   type StaffGameRosterPlayer,
   type StaffGameRole,
   type StaffGameClue,
   type StaffGameComparison,
+  type StaffGamePressureRoute,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
 
@@ -85,6 +87,7 @@ export default function AdminGamePage() {
   const [roles, setRoles] = useState<StaffGameRole[] | null>(null);
   const [clues, setClues] = useState<StaffGameClue[] | null>(null);
   const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
+  const [pressureRoutes, setPressureRoutes] = useState<StaffGamePressureRoute[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -127,6 +130,13 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
+  const loadPressureRoutes = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffGamePressureRoutes(gameCode);
+    if (r.ok) setPressureRoutes(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -139,16 +149,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -316,6 +326,16 @@ export default function AdminGamePage() {
                   <p className="mt-4 whitespace-pre-wrap leading-7">{overview.comparison_body}</p>
                   <div className="mt-6 grid gap-4">
                     {(comparisons ?? []).map((route) => <article key={route.source_table_number} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><h3 className="font-semibold">Tavolo {route.source_table_number} → Tavolo {route.target_table_number}</h3><p className="mt-1 text-sm leading-6">{route.instruction}</p></article>)}
+                  </div>
+                </section>
+              )}
+              {overview.narrative_phase === "pressure" && overview.pressure_title && (
+                <section className="mt-6 border border-border p-4" aria-labelledby="staff-pressure-title">
+                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Pressione</p>
+                  <h2 id="staff-pressure-title" className="mt-2 text-2xl font-semibold text-primary">{overview.pressure_title}</h2>
+                  <p className="mt-4 whitespace-pre-wrap leading-7">{overview.pressure_body}</p>
+                  <div className="mt-6 grid gap-4">
+                    {(pressureRoutes ?? []).map((route) => <article key={route.source_table_number} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><h3 className="font-semibold">Tavolo {route.source_table_number} → Tavolo {route.target_table_number}</h3><p className="mt-1 font-semibold text-primary">{route.title}</p><p className="mt-1 text-sm leading-6">{route.instruction}</p></article>)}
                   </div>
                 </section>
               )}
