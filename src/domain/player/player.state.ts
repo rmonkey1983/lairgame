@@ -13,6 +13,9 @@ export type PlayerGameState = {
   seat_number: number
   role: PlayerFacingRole | null
   role_acknowledged: boolean
+  scenario_title: string | null
+  briefing_title: string | null
+  briefing_body: string | null
 }
 
 function mapError(error: { message: string }): Result<never> {

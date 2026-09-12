@@ -151,6 +151,39 @@ export type Database = {
           },
         ]
       }
+      game_role_acknowledgements: {
+        Row: {
+          acknowledged_at: string
+          game_id: string
+          player_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          game_id: string
+          player_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          game_id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_role_acknowledgements_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_role_acknowledgements_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_role_assignment_commands: {
         Row: {
           command_id: string
@@ -226,15 +259,6 @@ export type Database = {
           },
         ]
       }
-      game_role_acknowledgements: {
-        Row: { acknowledged_at: string; game_id: string; player_id: string }
-        Insert: { acknowledged_at?: string; game_id: string; player_id: string }
-        Update: { acknowledged_at?: string; game_id?: string; player_id?: string }
-        Relationships: [
-          { foreignKeyName: "game_role_acknowledgements_game_id_fkey"; columns: ["game_id"]; isOneToOne: false; referencedRelation: "games"; referencedColumns: ["id"] },
-          { foreignKeyName: "game_role_acknowledgements_player_id_fkey"; columns: ["player_id"]; isOneToOne: true; referencedRelation: "players"; referencedColumns: ["id"] },
-        ]
-      }
       game_tables: {
         Row: {
           created_at: string
@@ -275,6 +299,7 @@ export type Database = {
           id: string
           lifecycle: string
           narrative_phase: string
+          scenario_version_id: string | null
           updated_at: string
         }
         Insert: {
@@ -284,6 +309,7 @@ export type Database = {
           id?: string
           lifecycle?: string
           narrative_phase?: string
+          scenario_version_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -293,6 +319,7 @@ export type Database = {
           id?: string
           lifecycle?: string
           narrative_phase?: string
+          scenario_version_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -301,6 +328,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_scenario_version_id_fkey"
+            columns: ["scenario_version_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -353,6 +387,68 @@ export type Database = {
           },
         ]
       }
+      scenario_versions: {
+        Row: {
+          briefing_body: string
+          briefing_title: string
+          created_at: string
+          id: string
+          published_at: string | null
+          scenario_id: string
+          status: string
+          version_number: number
+        }
+        Insert: {
+          briefing_body: string
+          briefing_title: string
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          scenario_id: string
+          status: string
+          version_number: number
+        }
+        Update: {
+          briefing_body?: string
+          briefing_title?: string
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          scenario_id?: string
+          status?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_versions_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenarios: {
+        Row: {
+          created_at: string
+          id: string
+          slug: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          slug: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          slug?: string
+          title?: string
+        }
+        Relationships: []
+      }
       staff_members: {
         Row: {
           active: boolean
@@ -387,7 +483,10 @@ export type Database = {
     Functions: {
       acknowledge_my_role: {
         Args: { game_code: string }
-        Returns: { acknowledged_at: string; game_id: string }[]
+        Returns: {
+          acknowledged_at: string
+          game_id: string
+        }[]
       }
       assign_game_roles: {
         Args: { command_id: string; game_code: string }
@@ -414,12 +513,15 @@ export type Database = {
       get_my_player_state: {
         Args: { game_code: string }
         Returns: {
+          briefing_body: string
+          briefing_title: string
           game_id: string
           lifecycle: string
           narrative_phase: string
           nickname: string
           role: string
           role_acknowledged: boolean
+          scenario_title: string
           seat_number: number
           table_number: number
         }[]
@@ -435,6 +537,8 @@ export type Database = {
       get_staff_game_overview: {
         Args: { p_game_code: string }
         Returns: {
+          briefing_body: string
+          briefing_title: string
           code: string
           created_at: string
           event_name: string
@@ -442,6 +546,8 @@ export type Database = {
           lifecycle: string
           narrative_phase: string
           player_count: number
+          scenario_title: string
+          scenario_version_number: number
           starts_at: string
           table_count: number
           venue_name: string
@@ -453,9 +559,9 @@ export type Database = {
           nickname: string
           player_id: string
           role: string
+          role_acknowledged: boolean
           seat_number: number
           table_number: number
-          role_acknowledged: boolean
         }[]
       }
       get_staff_game_roster: {
@@ -549,12 +655,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -578,11 +684,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -603,11 +709,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -628,11 +734,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -645,11 +751,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

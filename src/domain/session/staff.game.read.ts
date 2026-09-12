@@ -25,6 +25,10 @@ export type StaffGameOverview = {
   venue_name: string | null
   table_count: number
   player_count: number
+  scenario_title: string | null
+  scenario_version_number: number | null
+  briefing_title: string | null
+  briefing_body: string | null
 }
 
 export type StaffGameRosterPlayer = {

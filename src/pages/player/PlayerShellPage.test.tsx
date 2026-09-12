@@ -57,6 +57,20 @@ describe('PlayerShellPage', () => {
     expect(await screen.findByText('Ruolo confermato. Attendi la Regia.')).toBeInTheDocument()
   })
 
+  it('renders only the selected public briefing after the phase wake-up', async () => {
+    getState
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'role_reveal', nickname: 'Player', table_number: 3, seat_number: 1, role: 'investigator', role_acknowledged: false, scenario_title: null, briefing_title: null, briefing_body: null } })
+      .mockResolvedValueOnce({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'briefing', nickname: 'Player', table_number: 3, seat_number: 1, role: 'investigator', role_acknowledged: false, scenario_title: 'Scenario', briefing_title: 'Titolo briefing', briefing_body: 'Corpo briefing' } })
+    let wakeUp!: () => void
+    subscribe.mockImplementationOnce((...args: unknown[]) => { wakeUp = args[1] as () => void; return vi.fn() })
+    renderShell()
+    expect(await screen.findByText('Investigatore')).toBeInTheDocument()
+    expect(screen.queryByText('Titolo briefing')).not.toBeInTheDocument()
+    wakeUp()
+    expect(await screen.findByText('Titolo briefing')).toBeInTheDocument()
+    expect(screen.getByText('Corpo briefing')).toBeInTheDocument()
+  })
+
   it('handles missing session without creating replacement identity', async () => {
     getState.mockResolvedValue({ ok: false, error: { userMessage: 'Sessione Player non disponibile.' } })
     renderShell()

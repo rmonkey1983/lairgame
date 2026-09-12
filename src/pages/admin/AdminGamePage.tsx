@@ -258,6 +258,18 @@ export default function AdminGamePage() {
               <p className="text-xl font-semibold text-text">
                 {overview.event_name}
               </p>
+              {overview.scenario_title && (
+                <p className="mt-2 text-sm text-muted">
+                  Scenario: <span className="font-semibold text-text">{overview.scenario_title}</span> · Versione {overview.scenario_version_number}
+                </p>
+              )}
+              {overview.narrative_phase === "briefing" && overview.briefing_title && (
+                <section className="mt-6 border border-border p-4" aria-labelledby="staff-briefing-title">
+                  <p className="text-sm uppercase tracking-[0.16em] text-muted">Briefing</p>
+                  <h2 id="staff-briefing-title" className="mt-2 text-2xl font-semibold text-primary">{overview.briefing_title}</h2>
+                  <p className="mt-4 whitespace-pre-wrap leading-7">{overview.briefing_body}</p>
+                </section>
+              )}
               <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-2">
                 <div>
                   <dt className="text-sm text-muted">Lifecycle</dt>
