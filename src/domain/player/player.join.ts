@@ -1,7 +1,6 @@
-import type { User } from '@supabase/supabase-js'
 import { appError, fail, ok, type AppErrorCode, type Result } from '../../lib/errors/error.contracts'
-import { logger } from '../../lib/logging/logger'
 import { playerSupabaseClient } from '../../lib/supabase/player-client'
+import { ensureAnonymousPlayerSession } from './player.auth'
 
 export type PlayerJoinState = {
   player_id: string
@@ -28,37 +27,31 @@ function mapRpcError(error: { message: string }): Result<never> {
     NICKNAME_INVALID: { code: 'VALIDATION', message: 'Inserisci un nickname.' },
     SEAT_TAKEN: { code: 'CONFLICT', message: 'Posto già occupato. Scegline un altro.' },
     CONFLICT: { code: 'CONFLICT', message: 'Join già effettuato con dati diversi.' },
+    AUTH_SESSION_STALE: { code: 'UNAUTHORIZED', message: 'Sessione Player non disponibile.' },
   }
   const mapped = messages[error.message]
   return fail(appError(mapped?.code ?? 'UNKNOWN', mapped?.message ?? 'Impossibile completare il join.', { cause: error, retryable: !mapped }))
 }
 
-export async function ensureAnonymousPlayerSession(): Promise<Result<User>> {
-  if (!playerSupabaseClient) return unavailable<User>()
-  const current = await playerSupabaseClient.auth.getSession()
-  if (current.error) return fail(appError('NETWORK', 'Impossibile verificare la sessione.', { cause: current.error, retryable: true }))
-  if (current.data.session) {
-    if (current.data.session.user.is_anonymous !== true) return fail(appError('FORBIDDEN', 'Sessione non valida per Player.'))
-    return ok(current.data.session.user)
-  }
-  const signedIn = await playerSupabaseClient.auth.signInAnonymously()
-  if (signedIn.error || !signedIn.data.user) {
-    logger.warn('Anonymous sign-in failed', { cause: signedIn.error })
-    return fail(appError('UNAUTHORIZED', 'Impossibile creare la sessione Player.', { cause: signedIn.error, retryable: true }))
-  }
-  return ok(signedIn.data.user)
-}
-
 export async function joinGame(input: { gameCode: string; nickname: string; tableNumber: number; seatNumber: number }): Promise<Result<PlayerJoinState>> {
-  if (!playerSupabaseClient) return unavailable<PlayerJoinState>()
-  const { data, error } = await playerSupabaseClient.rpc('join_game', {
+  const client = playerSupabaseClient
+  if (!client) return unavailable<PlayerJoinState>()
+  const session = await ensureAnonymousPlayerSession()
+  if (!session.ok) return session
+  const runJoin = async () => client.rpc('join_game', {
     p_game_code: input.gameCode,
     p_nickname: input.nickname,
     p_table_number: input.tableNumber,
     p_seat_number: input.seatNumber,
   })
-  if (error || !data?.[0]) return error ? mapRpcError(error) : fail(appError('UNKNOWN', 'Risposta join non valida.'))
-  return ok(data[0])
+  const first = await runJoin()
+  if (!first.error && first.data?.[0]) return ok(first.data[0])
+  if (first.error?.message !== 'AUTH_SESSION_STALE') return first.error ? mapRpcError(first.error) : fail(appError('UNKNOWN', 'Risposta join non valida.'))
+  const recovered = await ensureAnonymousPlayerSession({ forceFresh: true })
+  if (!recovered.ok) return recovered
+  const retry = await runJoin()
+  if (retry.error || !retry.data?.[0]) return retry.error ? mapRpcError(retry.error) : fail(appError('UNKNOWN', 'Risposta join non valida.'))
+  return ok(retry.data[0])
 }
 
 export async function getMyJoinState(gameCode: string): Promise<Result<PlayerJoinState | null>> {

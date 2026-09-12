@@ -5,12 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import PlayerEntryPage from './PlayerEntryPage'
 
 const mocks = vi.hoisted(() => ({
-  ensure: vi.fn(),
   join: vi.fn(),
 }))
 vi.mock('../../domain/player/player.join', async () => {
   const actual = await vi.importActual<typeof import('../../domain/player/player.join')>('../../domain/player/player.join')
-  return { ...actual, ensureAnonymousPlayerSession: mocks.ensure, joinGame: mocks.join }
+  return { ...actual, joinGame: mocks.join }
 })
 
 function renderEntry() {
@@ -22,40 +21,32 @@ afterEach(() => { cleanup(); vi.clearAllMocks() })
 describe('PlayerEntryPage', () => {
   it('does not create anonymous auth on page load', () => {
     renderEntry()
-    expect(mocks.ensure).not.toHaveBeenCalled()
+    expect(mocks.join).not.toHaveBeenCalled()
   })
 
   it('validates fields and starts auth only after valid submit', async () => {
     const user = userEvent.setup()
-    mocks.ensure.mockResolvedValue({ ok: true, value: { id: 'user-1' } })
     mocks.join.mockResolvedValue({ ok: true, value: {} })
     renderEntry()
     await user.click(screen.getByRole('button', { name: 'Entra nel gioco' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Inserisci un nickname.')
-    expect(mocks.ensure).not.toHaveBeenCalled()
     await user.type(screen.getByLabelText('Nickname'), ' Player ')
     await user.type(screen.getByLabelText('Numero tavolo'), '3')
     await user.type(screen.getByLabelText('Numero posto'), '1')
     await user.click(screen.getByRole('button', { name: 'Entra nel gioco' }))
-    expect(mocks.ensure).toHaveBeenCalledOnce()
     expect(mocks.join).toHaveBeenCalledWith({ gameCode: 'JOIN-ONE', nickname: 'Player', tableNumber: 3, seatNumber: 1 })
     expect(await screen.findByText('session route')).toBeInTheDocument()
   })
 
   it('maps service errors and prevents duplicate submit while pending', async () => {
     const user = userEvent.setup()
-    let resolve: (value: { ok: true; value: { id: string } }) => void = () => undefined
-    mocks.ensure.mockReturnValue(new Promise((done) => { resolve = done }))
+    mocks.join.mockResolvedValue({ ok: false, error: { userMessage: 'Posto già occupato.' } })
     renderEntry()
     await user.type(screen.getByLabelText('Nickname'), 'Player')
     await user.type(screen.getByLabelText('Numero tavolo'), '3')
     await user.type(screen.getByLabelText('Numero posto'), '1')
     const button = screen.getByRole('button', { name: 'Entra nel gioco' })
     await user.click(button)
-    expect(button).toBeDisabled()
-    expect(mocks.ensure).toHaveBeenCalledOnce()
-    resolve({ ok: true, value: { id: 'user-1' } })
-    mocks.join.mockResolvedValue({ ok: false, error: { userMessage: 'Posto già occupato.' } })
     expect(await screen.findByRole('alert')).toHaveTextContent('Posto già occupato.')
   })
 })

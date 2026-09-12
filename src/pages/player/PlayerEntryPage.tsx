@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageShell } from '../../components/common/PageShell'
-import { ensureAnonymousPlayerSession, joinGame, validateJoinInput } from '../../domain/player/player.join'
+import { joinGame, validateJoinInput } from '../../domain/player/player.join'
 
 export default function PlayerEntryPage() {
   const { gameCode } = useParams()
@@ -18,8 +18,6 @@ export default function PlayerEntryPage() {
     if (validationError) { setError(validationError); return }
     setError(null)
     setSubmitting(true)
-    const session = await ensureAnonymousPlayerSession()
-    if (!session.ok) { setError(session.error.userMessage); setSubmitting(false); return }
     const joined = await joinGame({ gameCode: gameCode!.trim(), nickname: nickname.trim(), tableNumber: Number(tableNumber), seatNumber: Number(seatNumber) })
     if (!joined.ok) { setError(joined.error.userMessage); setSubmitting(false); return }
     navigate(`/play/${gameCode!.trim()}/session`)
