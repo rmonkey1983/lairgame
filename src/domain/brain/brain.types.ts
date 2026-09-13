@@ -186,8 +186,31 @@ export type BrainDecisionType =
   | 'INACTIVE_PLAYER'
   | 'TABLE_IMBALANCE'
 
+export type BrainDecisionSeverity = 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH'
+export type BrainDecisionScope =
+  | { type: 'SESSION' }
+  | { type: 'TABLE'; tableId: string }
+  | { type: 'PLAYER'; playerId: string }
+
+export type BrainDecisionEvidence = {
+  phase: GamePhase
+  metrics: Partial<Pick<BrainMetrics, 'liarExposure' | 'suspicionCoverage' | 'theoryDiversity' | 'participationBalance' | 'trustCoverage' | 'trustConcentration' | 'theoryShiftRate' | 'averageTheoryChanges' | 'liarConfidence'>>
+  thresholds?: Partial<Record<DecisionThresholdKey, number>>
+  mostSuspectedPlayerId?: string
+  playerActivity?: PlayerActivityMetric[]
+  tableMetrics?: TableBrainMetrics
+}
+
+export type BrainRecommendationType = 'REDUCE_DIRECT_PRESSURE' | 'INCREASE_THEORY_DIVERSITY' | 'INVITE_BROADER_PARTICIPATION' | 'CREATE_TRUST_OPPORTUNITY'
+export type BrainRecommendation = { type: BrainRecommendationType }
+
 export type BrainDecision = {
   type: BrainDecisionType
+  mode: 'SUGGEST'
+  severity: BrainDecisionSeverity
+  scope: BrainDecisionScope
+  evidence: BrainDecisionEvidence
+  recommendation?: BrainRecommendation
   priority: 'low' | 'medium' | 'high'
   reason: string
   playerId?: string
@@ -195,6 +218,17 @@ export type BrainDecision = {
   recommendedAction?: BrainActionType
   requiresMcApproval: boolean
 }
+
+export type DecisionThresholdKey =
+  | 'minimumSuspicionCoverage'
+  | 'highLiarExposure'
+  | 'lowLiarExposure'
+  | 'theoryCollapse'
+  | 'minimumTrustCoverage'
+  | 'highTrustConcentration'
+  | 'lowParticipationBalance'
+  | 'inactivePlayerActivity'
+  | 'minimumEvidencePlayers'
 
 export type BrainInput = {
   sessionId: string
