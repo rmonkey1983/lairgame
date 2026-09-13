@@ -14,7 +14,7 @@ describe('player game realtime subscription', () => {
 
   it('authenticates before subscribing to the private game topic and cleans up', async () => {
     let wakeUp!: () => void
-    on.mockImplementationOnce((_type: string, _filter: unknown, callback: () => void) => { wakeUp = callback; return { subscribe } })
+    on.mockImplementation((_type: string, _filter: unknown, callback: () => void) => { wakeUp = callback; return { on, subscribe } })
     const onStateChanged = vi.fn()
     const unsubscribe = subscribeToPlayerGameState('game-1', onStateChanged)
     expect(channel).toHaveBeenCalledWith('game:game-1', { config: { private: true } })

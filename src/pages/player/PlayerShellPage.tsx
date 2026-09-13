@@ -4,6 +4,7 @@ import { PageShell } from '../../components/common/PageShell'
 import { getMyPlayerState, isPlayerNotJoined, type PlayerGameState } from '../../domain/player/player.state'
 import { acknowledgeMyRole } from '../../domain/player/player.role'
 import { subscribeToPlayerGameState } from '../../domain/player/player.realtime'
+import { getPlayerMissionInstruction, loadMyActiveMissions, type PlayerActiveMission } from '../../domain/player/player.missions'
 
 export default function PlayerShellPage() {
   const { gameCode } = useParams()
@@ -12,10 +13,14 @@ export default function PlayerShellPage() {
   const [message, setMessage] = useState('Caricamento sessione…')
   const [ackPending, setAckPending] = useState(false)
   const [ackError, setAckError] = useState<string | null>(null)
+  const [missions, setMissions] = useState<PlayerActiveMission[]>([])
+  const [missionError, setMissionError] = useState<string | null>(null)
 
   const returnToJoin = useCallback(() => {
     setState(null)
     setAckError(null)
+    setMissions([])
+    setMissionError(null)
     navigate(`/play/${gameCode}`, { replace: true })
   }, [gameCode, navigate])
 
@@ -28,14 +33,25 @@ export default function PlayerShellPage() {
     else if (!result.ok) setMessage(result.error.userMessage)
   }, [returnToJoin])
 
+  const refetchMissions = useCallback(() => {
+    if (!gameCode) return
+    void loadMyActiveMissions(gameCode).then((result) => {
+      if (result.ok) {
+        setMissions(result.value)
+        setMissionError(null)
+      } else setMissionError(result.error.userMessage)
+    })
+  }, [gameCode])
+
   useEffect(() => {
     let active = true
     void getMyPlayerState(gameCode ?? '').then((result) => {
       if (!active) return
       applyAuthoritativeState(result)
+      if (result.ok) refetchMissions()
     })
     return () => { active = false }
-  }, [applyAuthoritativeState, gameCode])
+  }, [applyAuthoritativeState, gameCode, refetchMissions])
 
   async function handleAcknowledge() {
     if (!gameCode || ackPending || state?.role_acknowledged) return
@@ -54,7 +70,8 @@ export default function PlayerShellPage() {
     void getMyPlayerState(gameCode ?? '').then((result) => {
       applyAuthoritativeState(result)
     })
-  }, [applyAuthoritativeState, gameCode])
+    refetchMissions()
+  }, [applyAuthoritativeState, gameCode, refetchMissions])
 
   useEffect(() => {
     const handleFocus = () => refetch()
@@ -95,6 +112,6 @@ export default function PlayerShellPage() {
   }
 
   return <PageShell eyebrow="Player session" title={title}>
-    {state ? <div className="player-session max-w-2xl"><div className="player-session-bar"><span className="player-live"><i aria-hidden="true" /> LIVE</span><span className="player-identity">{state.nickname}</span><span className="player-placement">{`Tavolo ${state.table_number} · Posto ${state.seat_number}`}</span></div><div className="player-stage">{renderContent()}</div><div className="player-session-footer"><span>Sessione attiva</span></div></div> : <div className="max-w-md"><p className="text-muted">{message}</p><Link className="action action-secondary form-action mt-6 w-fit" to={`/play/${gameCode}`}>Torna al join</Link></div>}
+    {state ? <div className="player-session max-w-2xl"><div className="player-session-bar"><span className="player-live"><i aria-hidden="true" /> LIVE</span><span className="player-identity">{state.nickname}</span><span className="player-placement">{`Tavolo ${state.table_number} · Posto ${state.seat_number}`}</span></div><div className="player-stage">{renderContent()}<section className="mt-10 border-t border-border pt-6" aria-labelledby="mission-title"><p className="text-sm uppercase tracking-[0.16em] text-muted">Missione</p>{missions[0] ? <div className="mt-3"><h2 id="mission-title" className="text-2xl font-semibold text-primary">{getPlayerMissionInstruction(missions[0])}</h2>{missions[0].targetPlayerId && <p className="mt-3 text-muted">Obiettivo: {missions[0].targetPlayerId}</p>}<p className="mt-3 text-sm text-muted">Fase: {missions[0].phase}</p></div> : <p id="mission-title" className="mt-3 text-muted">Nessuna missione attiva.</p>}{missionError && <p className="mt-3 text-sm text-muted" role="status">Missione non disponibile in questo momento.</p>}</section></div><div className="player-session-footer"><span>Sessione attiva</span></div></div> : <div className="max-w-md"><p className="text-muted">{message}</p><Link className="action action-secondary form-action mt-6 w-fit" to={`/play/${gameCode}`}>Torna al join</Link></div>}
   </PageShell>
 }

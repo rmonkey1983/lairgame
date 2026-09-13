@@ -1201,6 +1201,16 @@ export type Database = {
           target_player_id: string
         }[]
       }
+      load_my_player_missions: {
+        Args: { game_code: string }
+        Returns: {
+          mission_id: string
+          mission_type: string
+          phase: string
+          status: string
+          target_player_id: string
+        }[]
+      }
       reject_brain_regia_proposal: {
         Args: { proposal_id: string; session_id: string }
         Returns: {
@@ -1323,7 +1333,6 @@ export type Database = {
     }
   }
 }
-
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

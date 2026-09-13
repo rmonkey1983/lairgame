@@ -1,20 +1,23 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PlayerShellPage from './PlayerShellPage'
 
 const getState = vi.hoisted(() => vi.fn())
 const subscribe = vi.hoisted(() => vi.fn(() => vi.fn()))
 const acknowledge = vi.hoisted(() => vi.fn())
+const loadMissions = vi.hoisted(() => vi.fn())
 vi.mock('../../domain/player/player.state', () => ({ getMyPlayerState: getState, isPlayerNotJoined: (result: { ok: boolean; error?: { code?: string } }) => !result.ok && result.error?.code === 'PLAYER_NOT_JOINED' }))
 vi.mock('../../domain/player/player.realtime', () => ({ subscribeToPlayerGameState: subscribe }))
 vi.mock('../../domain/player/player.role', () => ({ acknowledgeMyRole: acknowledge }))
+vi.mock('../../domain/player/player.missions', () => ({ loadMyActiveMissions: loadMissions, getPlayerMissionInstruction: (mission: { type: string; targetPlayerId?: string }) => `${mission.type} ${mission.targetPlayerId ?? ''}`.trim() }))
 
 function renderShell() {
   return render(<MemoryRouter initialEntries={['/play/JOIN-ONE/session']}><Routes><Route path="/play/:gameCode/session" element={<PlayerShellPage />} /><Route path="/play/:gameCode" element={<p>join route</p>} /></Routes></MemoryRouter>)
 }
 
+beforeEach(() => { loadMissions.mockResolvedValue({ ok: true, value: [] }) })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('PlayerShellPage', () => {
@@ -69,6 +72,21 @@ describe('PlayerShellPage', () => {
     wakeUp()
     expect(await screen.findByText('Titolo briefing')).toBeInTheDocument()
     expect(screen.getByText('Corpo briefing')).toBeInTheDocument()
+  })
+
+  it('renders the authoritative active mission and reloads it after a wake-up', async () => {
+    getState.mockResolvedValue({ ok: true, value: { game_id: 'game-1', lifecycle: 'live', narrative_phase: 'pressure', nickname: 'Player', table_number: 1, seat_number: 1, role: 'investigator' } })
+    loadMissions
+      .mockResolvedValueOnce({ ok: true, value: [] })
+      .mockResolvedValueOnce({ ok: true, value: [{ missionId: 'mission-1', type: 'QUESTION_PLAYER', targetPlayerId: 'P12', phase: 'DOUBT', status: 'ACTIVE' }] })
+    let wakeUp!: () => void
+    subscribe.mockImplementationOnce((...args: unknown[]) => { wakeUp = args[1] as () => void; return vi.fn() })
+    renderShell()
+    expect(await screen.findByText('Nessuna missione attiva.')).toBeInTheDocument()
+    wakeUp()
+    expect(await screen.findByText('QUESTION_PLAYER P12')).toBeInTheDocument()
+    expect(screen.getByText('Obiettivo: P12')).toBeInTheDocument()
+    expect(screen.getByText('Fase: DOUBT')).toBeInTheDocument()
   })
 
   it('moves from briefing to the Discovery cue without showing stale content', async () => {
