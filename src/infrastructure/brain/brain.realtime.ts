@@ -9,6 +9,7 @@ import type { TrustGraph } from '../../domain/brain/brain.trust'
 import type { BrainInput, BrainState, ScenarioTruth } from '../../domain/brain/brain.types'
 import type { RegiaProposal } from '../../domain/brain/brain.regia'
 import type { BrainPersistence } from './brain.persistence'
+import { buildBrainAIRequest, evaluateWithBrainAI, selectDirectorProposalFromAI, type BrainAIEvaluationResult, type BrainAIProvider } from './brain.ai'
 
 type Client = SupabaseClient
 
@@ -32,6 +33,7 @@ export type BrainRealtimeContext = {
 
 export type LiveBrainSnapshot = {
   sessionId: string
+  phase: BrainState['phase']
   events: BrainEventStore
   trustGraph: TrustGraph
   suspicionGraph: SuspicionGraph
@@ -42,12 +44,25 @@ export type LiveBrainSnapshot = {
   revision: number
 }
 
+export type LiveBrainAIState = {
+  status: 'DISABLED' | 'IDLE' | 'EVALUATING' | 'USED' | 'FALLBACK' | 'ERROR'
+  evaluation?: BrainAIEvaluationResult
+  selectedProposalId?: string
+  confidence?: 'LOW' | 'MEDIUM' | 'HIGH'
+  explanation?: string
+  evaluatedSnapshotRevision?: number
+}
+
 export type BrainRealtimeOptions = {
   loadContext: (sessionId: string) => Promise<BrainRealtimeContext>
   onSnapshot?: (snapshot: LiveBrainSnapshot) => void
   onStatus?: (status: BrainRealtimeStatus) => void
   onError?: (error: unknown, kind: 'hydration' | 'subscription' | 'reconciliation' | 'evaluation') => void
   channelFactory?: (topic: string) => RealtimeChannel
+  aiEnabled?: boolean
+  aiProvider?: BrainAIProvider
+  aiTimeoutMs?: number
+  onAIState?: (state: LiveBrainAIState) => void
 }
 
 export function classifyBrainRealtimeChange(eventName: string): BrainRealtimeChangeRelevance {
@@ -58,6 +73,14 @@ export function classifyBrainRealtimeChange(eventName: string): BrainRealtimeCha
 
 function stableSnapshotValue(snapshot: Omit<LiveBrainSnapshot, 'revision'>): string {
   return JSON.stringify(snapshot)
+}
+
+export function meaningfulBrainAIFingerprint(snapshot: Omit<LiveBrainSnapshot, 'revision'>): string {
+  return JSON.stringify({
+    phase: snapshot.phase,
+    decisions: snapshot.decisions.map((decision) => ({ type: decision.type, severity: decision.severity, scope: decision.scope })),
+    directorProposals: snapshot.directorProposals.map((proposal) => ({ id: proposal.id, priority: proposal.priority, missionId: proposal.missionProposal?.missionId ?? null })),
+  })
 }
 
 function socialEdges(trustGraph: TrustGraph, suspicionGraph: SuspicionGraph) {
@@ -76,6 +99,50 @@ export function createLiveBrainRealtime(client: Client, persistence: BrainPersis
   let stopped = false
   let reconnecting = false
   let reloadInFlight: Promise<void> | undefined
+  let latestAIFingerprint = ''
+  let evaluatedAIFingerprint = ''
+  let aiState: LiveBrainAIState = { status: options.aiEnabled ? 'IDLE' : 'DISABLED' }
+  let aiInFlight: Promise<void> | undefined
+  let pendingAIEvaluation: { snapshot: LiveBrainSnapshot; context: BrainRealtimeContext } | undefined
+  options.onAIState?.(aiState)
+
+  const setAIState = (next: LiveBrainAIState) => { aiState = next; options.onAIState?.(next) }
+
+  const evaluateAI = async (nextSnapshot: LiveBrainSnapshot, context: BrainRealtimeContext) => {
+    if (!options.aiEnabled) return
+    const fingerprint = meaningfulBrainAIFingerprint(nextSnapshot)
+    latestAIFingerprint = fingerprint
+    if (nextSnapshot.directorProposals.length === 0 || fingerprint === evaluatedAIFingerprint) return
+    if (aiInFlight) {
+      pendingAIEvaluation = { snapshot: nextSnapshot, context }
+      return
+    }
+    evaluatedAIFingerprint = fingerprint
+    setAIState({ status: 'EVALUATING', evaluatedSnapshotRevision: nextSnapshot.revision })
+    const request = buildBrainAIRequest({
+      sessionId: nextSnapshot.sessionId,
+      phase: context.input.phase,
+      metrics: nextSnapshot.metrics,
+      decisions: nextSnapshot.decisions,
+      allowedDirectorProposals: nextSnapshot.directorProposals,
+      allowedMissionProposals: nextSnapshot.directorProposals.flatMap((proposal) => proposal.missionProposal ? [proposal.missionProposal] : []),
+    })
+    aiInFlight = evaluateWithBrainAI(request, options.aiProvider, { aiEnabled: true, timeoutMs: options.aiTimeoutMs }).then((evaluation) => {
+      if (stopped || latestAIFingerprint !== fingerprint) return
+      if (evaluation.status === 'USED' || evaluation.status === 'FALLBACK') {
+        const selected = selectDirectorProposalFromAI(request, evaluation)
+        setAIState({ status: evaluation.status, evaluation, ...(selected ? { selectedProposalId: selected.id } : {}), confidence: evaluation.response.confidence, ...(evaluation.response.explanation ? { explanation: evaluation.response.explanation } : {}), evaluatedSnapshotRevision: nextSnapshot.revision })
+      } else setAIState({ status: 'FALLBACK', evaluation, evaluatedSnapshotRevision: nextSnapshot.revision })
+    }).catch(() => {
+      if (!stopped && latestAIFingerprint === fingerprint) setAIState({ status: 'FALLBACK', evaluatedSnapshotRevision: nextSnapshot.revision })
+    }).finally(() => {
+      aiInFlight = undefined
+      const pending = pendingAIEvaluation
+      pendingAIEvaluation = undefined
+      if (pending && !stopped) void evaluateAI(pending.snapshot, pending.context)
+    })
+    await aiInFlight
+  }
 
   const setStatus = (next: BrainRealtimeStatus) => {
     status = next
@@ -118,6 +185,7 @@ export function createLiveBrainRealtime(client: Client, persistence: BrainPersis
     nextProposals.sort((a, b) => a.id.localeCompare(b.id))
     const next: Omit<LiveBrainSnapshot, 'revision'> = {
       sessionId,
+      phase: evaluation.state.phase,
       events,
       trustGraph,
       suspicionGraph,
@@ -133,6 +201,7 @@ export function createLiveBrainRealtime(client: Client, persistence: BrainPersis
       snapshot = { ...next, revision }
       if (emit) options.onSnapshot?.(snapshot)
     }
+    if (snapshot) void evaluateAI(snapshot, context)
   }
 
   const reconcile = async (kind: 'hydration' | 'reconciliation' | 'evaluation') => {
@@ -207,6 +276,7 @@ export function createLiveBrainRealtime(client: Client, persistence: BrainPersis
       const oldChannel = channel
       channel = undefined
       if (oldChannel) await client.removeChannel(oldChannel)
+      pendingAIEvaluation = undefined
     },
     refresh: () => reconcile('reconciliation'),
     getSnapshot: () => snapshot,

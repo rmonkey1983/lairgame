@@ -38,6 +38,7 @@ import { BrainRegiaPanel } from "../../components/admin/BrainRegiaPanel";
 import { createBrainPersistence } from "../../infrastructure/brain/brain.persistence";
 import { buildStaffBrainContext } from "../../infrastructure/brain/staff.brain.context";
 import { useLiveBrain } from "../../infrastructure/brain/useLiveBrain";
+import { createConfiguredProductionBrainAIProvider } from "../../infrastructure/brain/brain.ai.provider";
 import { staffSupabaseClient } from "../../lib/supabase/staff-client";
 
 const lifecycleLabels: Record<GameLifecycle, string> = {
@@ -259,13 +260,16 @@ export default function AdminGamePage() {
     overview?.lifecycle === "live" &&
     overview.narrative_phase === "lobby" &&
     !rolesAssigned;
-  const brainPersistence = useMemo(() => staffSupabaseClient ? createBrainPersistence(staffSupabaseClient) : null, []);
-  const brainConfig = useMemo(() => overview && roster && brainPersistence && staffSupabaseClient ? {
-    client: staffSupabaseClient,
+  const staffClient = staffSupabaseClient;
+  const brainPersistence = useMemo(() => staffClient ? createBrainPersistence(staffClient) : null, [staffClient]);
+  const brainConfig = useMemo(() => overview && roster && brainPersistence && staffClient ? {
+    client: staffClient,
     persistence: brainPersistence,
     sessionId: overview.id,
     loadContext: async () => buildStaffBrainContext(overview, roster),
-  } : null, [brainPersistence, overview, roster]);
+    aiEnabled: import.meta.env.VITE_BRAIN_AI_ENABLED === "true",
+    aiProvider: createConfiguredProductionBrainAIProvider(undefined, async () => (await staffClient.auth.getSession()).data.session?.access_token),
+  } : null, [brainPersistence, overview, roster, staffClient]);
   const brain = useLiveBrain(brainConfig);
   const [brainActionPending, setBrainActionPending] = useState<string | undefined>();
   const approveBrainProposal = useCallback(async (proposalId: string) => {
