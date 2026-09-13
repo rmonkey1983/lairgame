@@ -61,3 +61,9 @@ Le funzioni `SECURITY DEFINER` privilegiate non devono vivere in schemi esposti 
 ## Narrative phase command (Milestone 9)
 
 `transition_game_narrative_phase(text, text, text, uuid)` consente allo Staff attivo di avanzare `games.narrative_phase` solo mentre il lifecycle è `live`. La matrice è strettamente sequenziale da `lobby` a `reveal`, senza skip o backward transition; `reveal` non ha successori. `FOR UPDATE`, `expected_phase` e `command_id` proteggono concorrenza, stale state e retry. `game_narrative_phase_commands` registra una riga append-only per comando compatibile nella stessa transazione della mutazione, senza accesso CRUD browser.
+
+## Post-game data foundation (Milestone 24)
+
+`brain_snapshots` conserva punti temporali significativi per l'analisi Staff: fase, motivo, fingerprint idempotente e metriche aggregate limitate. La sequence è assegnata sotto lock del Game; i retry dello stesso fingerprint restituiscono la riga esistente. Un trigger server-side registra gli ingressi di fase; gli altri motivi possono essere registrati dal command layer con `append_brain_snapshot`.
+
+La tabella non concede CRUD al browser. `load_brain_snapshots` e `append_brain_snapshot` seguono il wrapper pubblico invoker e l'implementazione privata definer con `search_path = ''`, e sono disponibili solo a Staff attivo. ScenarioTruth, grafi raw, prompt AI e report completo non sono persistiti.

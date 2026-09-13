@@ -16,6 +16,41 @@ export type TheorySnapshot = {
   liarExposure?: number | null
 }
 
+export type BrainMetricsSnapshot = {
+  liarExposure: number | null
+  roleExposure: { liar: number | null; accomplice: number | null; scapegoat: number | null }
+  suspicionCoverage: number | null
+  theoryDiversity: number | null
+  theoryShiftRate: number | null
+  trustCoverage: number | null
+  trustConcentration: number | null
+  participationBalance: number | null
+  tableMetrics?: Array<{ tableId: string; suspicionCoverage: number | null; theoryDiversity: number | null; participationBalance: number | null }>
+}
+
+export type PersistedBrainSnapshot = {
+  sessionId: string
+  sequence: number
+  phase: GamePhase
+  reason: 'PHASE_ENTERED' | 'DECISION_CHANGED' | 'INTERVENTION_APPROVED' | 'MISSION_ACTIVATED' | 'MISSION_OUTCOME' | 'FINAL_VOTE_LOCKED'
+  relatedEntityId?: string | null
+  fingerprint: string
+  metrics: BrainMetricsSnapshot
+  createdAt: string
+}
+
+export function getSnapshotsForSession(snapshots: readonly PersistedBrainSnapshot[], sessionId: string): PersistedBrainSnapshot[] {
+  return snapshots.filter((snapshot) => snapshot.sessionId === sessionId).sort((a, b) => a.sequence - b.sequence).map((snapshot) => ({ ...snapshot, metrics: { ...snapshot.metrics, roleExposure: { ...snapshot.metrics.roleExposure }, ...(snapshot.metrics.tableMetrics ? { tableMetrics: snapshot.metrics.tableMetrics.map((table) => ({ ...table })) } : {}) } }))
+}
+
+export function getSnapshotBefore(snapshots: readonly PersistedBrainSnapshot[], sequence: number): PersistedBrainSnapshot | null {
+  return [...snapshots].filter((snapshot) => snapshot.sequence < sequence).sort((a, b) => b.sequence - a.sequence)[0] ?? null
+}
+
+export function getSnapshotAfter(snapshots: readonly PersistedBrainSnapshot[], sequence: number): PersistedBrainSnapshot | null {
+  return [...snapshots].filter((snapshot) => snapshot.sequence > sequence).sort((a, b) => a.sequence - b.sequence)[0] ?? null
+}
+
 export type ObservedBeforeAfter = { before: number | null; after: number | null; delta: number | null; attribution: 'OBSERVED_ONLY' }
 
 export type PostGameSummary = {
@@ -108,6 +143,7 @@ export type PostGameAnalysisInput = {
   missionOutcomes?: MissionOutcomeRecord[]
   theoryHistory?: TheorySnapshot[]
   finalVoting?: FinalVotingData
+  brainSnapshots?: PersistedBrainSnapshot[]
 }
 
 function clamp(value: number): number { return Number(Math.max(0, Math.min(1, value)).toFixed(6)) }
@@ -143,14 +179,21 @@ export function analyzeFinalOutcome(voting?: FinalVotingData): FinalGameOutcome 
 export function analyzeTheoryDynamics(input: PostGameAnalysisInput): TheoryDynamicsAnalysis {
   const [first, last] = latestSnapshots(input.theoryHistory ?? [])
   const history = [...(input.theoryHistory ?? [])].sort((a, b) => a.sequence - b.sequence)
+  const persisted = getSnapshotsForSession(input.brainSnapshots ?? [], input.sessionId)
+  const firstPersisted = persisted[0]
+  const lastPersisted = persisted.at(-1)
   const changes = new Map<string, number>()
   for (let index = 1; index < history.length; index += 1) for (const playerId of Object.keys(history[index].theories)) if (history[index - 1].theories[playerId] !== history[index].theories[playerId]) changes.set(playerId, (changes.get(playerId) ?? 0) + 1)
   const allTargets = history.flatMap((snapshot) => Object.values(snapshot.theories))
   const suspectCounts = new Map<string, number>()
   allTargets.forEach((target) => { if (target) suspectCounts.set(target, (suspectCounts.get(target) ?? 0) + 1) })
   const max = Math.max(...suspectCounts.values(), 0)
-  const exposures = history.map((snapshot) => snapshot.liarExposure).filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value))
-  return { initialTheoryDiversity: first ? diversity(Object.values(first.theories)) : null, finalTheoryDiversity: last ? diversity(Object.values(last.theories)) : null, peakLiarExposure: exposures.length ? Math.max(...exposures) : null, finalLiarExposure: last?.liarExposure ?? null, theoryShiftRate: ratio([...changes.values()].filter((value) => value > 0).length, input.players.length), averageTheoryChanges: input.players.length ? Number(([...changes.values()].reduce((sum, value) => sum + value, 0) / input.players.length).toFixed(6)) : null, mostSuspectedPlayers: max > 0 ? [...suspectCounts.entries()].filter(([, count]) => count === max).map(([playerId]) => playerId).sort() : [], beforeAfterLiarExposure: beforeAfter(first?.liarExposure, last?.liarExposure) }
+  const exposures = history.length ? history.map((snapshot) => snapshot.liarExposure).filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value)) : persisted.map((snapshot) => snapshot.metrics.liarExposure).filter((value): value is number => value !== null && Number.isFinite(value))
+  const initialDiversity = first ? diversity(Object.values(first.theories)) : firstPersisted?.metrics.theoryDiversity ?? null
+  const finalDiversity = last ? diversity(Object.values(last.theories)) : lastPersisted?.metrics.theoryDiversity ?? null
+  const firstExposure = first?.liarExposure ?? firstPersisted?.metrics.liarExposure
+  const finalExposure = last?.liarExposure ?? lastPersisted?.metrics.liarExposure
+  return { initialTheoryDiversity: initialDiversity, finalTheoryDiversity: finalDiversity, peakLiarExposure: exposures.length ? Math.max(...exposures) : null, finalLiarExposure: finalExposure ?? null, theoryShiftRate: ratio([...changes.values()].filter((value) => value > 0).length, input.players.length), averageTheoryChanges: input.players.length ? Number(([...changes.values()].reduce((sum, value) => sum + value, 0) / input.players.length).toFixed(6)) : null, mostSuspectedPlayers: max > 0 ? [...suspectCounts.entries()].filter(([, count]) => count === max).map(([playerId]) => playerId).sort() : [], beforeAfterLiarExposure: beforeAfter(firstExposure, finalExposure) }
 }
 
 export function analyzeTrustDynamics(input: PostGameAnalysisInput): TrustDynamicsAnalysis {

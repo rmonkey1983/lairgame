@@ -41,6 +41,8 @@ Le RPC esposte seguono un confine stabile: wrapper `SECURITY INVOKER` in `public
 
 La Regia usa `list_staff_games` e `get_staff_game_overview` come read model snapshot: ogni RPC autorizza autonomamente una membership Staff attiva e legge i conteggi dal database. `/admin/games/:gameCode` mantiene il game code esplicito; la selezione non è automatica.
 
+Il Post-Game Analysis Engine resta dominio puro. `createPostGamePersistence` idrata fuori dal dominio eventi, trust/suspicion, mission outcomes, proposte e `brain_snapshots`; la history significativa è quindi derivabile on-demand senza salvare il report completo o dati AI.
+
 La Regia legge il roster con `get_staff_game_roster` e lo mostra per i cinque tavoli e sei posti. Il join Player reale emette lo stesso wake-up `game_state_changed`; la Regia rifà overview e roster, senza usare il payload come stato.
 
 In `live`/`lobby` la Regia può assegnare una sola volta i ruoli tramite comando server-authoritative. Il wake-up è unico per comando e la Regia rifà overview, roster e ruoli; `role_reveal` richiede una assegnazione completa.

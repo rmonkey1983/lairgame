@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decision } from './brain.decisions'
 import { createBrainEventStore } from './brain.events'
-import { analyzeDataQuality, analyzeFinalOutcome, analyzeInterventions, analyzeParticipation, analyzePostGame, analyzeTables, analyzeTrustDynamics, type PostGameAnalysisInput } from './brain.postgame'
+import { analyzeDataQuality, analyzeFinalOutcome, analyzeInterventions, analyzeParticipation, analyzePostGame, analyzeTables, analyzeTheoryDynamics, analyzeTrustDynamics, getSnapshotAfter, getSnapshotBefore, getSnapshotsForSession, type PostGameAnalysisInput, type PersistedBrainSnapshot } from './brain.postgame'
 import { derivePlayerGameProfile } from './brain.profile'
 import { createSuspicionGraph, setSuspicion } from './brain.suspicion'
 import { createTrustGraph, setTrust } from './brain.trust'
@@ -115,5 +115,14 @@ describe('Post-Game Analysis Engine v0.23', () => {
     const report = analyzePostGame({ ...base(), eventStore: store })
     expect(report.summary.eventsRecorded).toBe(0)
     expect(report.dataQuality.completeEventTimeline).toBe(false)
+  })
+
+  it('hydrates persisted snapshots for observed before/after without cross-session leakage', () => {
+    const snapshot = (sequence: number, sessionId = 's1', liarExposure: number | null = sequence / 10): PersistedBrainSnapshot => ({ sessionId, sequence, phase: 'DOUBT', reason: 'MISSION_ACTIVATED', relatedEntityId: 'm1', fingerprint: `${sessionId}:${sequence}`, metrics: { liarExposure, roleExposure: { liar: null, accomplice: null, scapegoat: null }, suspicionCoverage: null, theoryDiversity: sequence / 10, theoryShiftRate: null, trustCoverage: null, trustConcentration: null, participationBalance: null }, createdAt: `2026-01-01T00:0${sequence}:00Z` })
+    const snapshots = [snapshot(2), snapshot(1), snapshot(1, 'other')]
+    expect(getSnapshotsForSession(snapshots, 's1').map((item) => item.sequence)).toEqual([1, 2])
+    expect(getSnapshotBefore(snapshots, 2)?.sequence).toBe(1)
+    expect(getSnapshotAfter(snapshots, 1)?.sequence).toBe(2)
+    expect(analyzeTheoryDynamics({ ...base(), theoryHistory: [], brainSnapshots: snapshots }).beforeAfterLiarExposure).toEqual({ before: 0.1, after: 0.2, delta: 0.1, attribution: 'OBSERVED_ONLY' })
   })
 })
