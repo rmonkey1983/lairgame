@@ -24,7 +24,7 @@ export function evaluateBrainState(state: BrainState, scenarioTruth?: ScenarioTr
   if (metrics.liarExposure !== null && metrics.liarExposure >= 0.5) decisions.push(decision('HIGH_LIAR_EXPOSURE', 'Il vero Bugiardo è già sospettato da una quota significativa dei Player.', { priority: 'high', recommendedAction: 'SUGGEST_DOUBT_EVENT' }))
   else if (metrics.liarExposure !== null && metrics.liarExposure < 0.25) decisions.push(decision('LOW_LIAR_EXPOSURE', 'Il vero Bugiardo è poco presente nei sospetti registrati.', { priority: 'medium', recommendedAction: 'REQUEST_SUSPICION' }))
 
-  if (metrics.theoryDiversity === 1 && state.socialEdges.some((edge) => edge.active && edge.type === 'SUSPICION') && isCoreLawEnabled(coreLaws, 'TRUST_BEFORE_DOUBT')) decisions.push(decision('THEORY_COLLAPSE', 'I sospetti registrati convergono su una sola teoria.', { priority: 'high', recommendedAction: 'SUGGEST_DOUBT_EVENT' }))
+  if (metrics.theoryDiversity === 0 && state.socialEdges.some((edge) => edge.active && edge.type === 'SUSPICION') && isCoreLawEnabled(coreLaws, 'TRUST_BEFORE_DOUBT')) decisions.push(decision('THEORY_COLLAPSE', 'I sospetti registrati convergono su una sola teoria.', { priority: 'high', recommendedAction: 'SUGGEST_DOUBT_EVENT' }))
   if (state.socialEdges.some((edge) => edge.active && edge.type === 'TRUST' && edge.phase === 'TRUST')) decisions.push(decision('TRUST_OPPORTUNITY', 'È stata registrata una relazione di fiducia utilizzabile da una dinamica già prevista.', { priority: 'low', recommendedAction: 'SUGGEST_INFORMATION_EVENT' }))
 
   if (decisions.length === 0) decisions.push(decision('NO_ACTION', 'Nessuna condizione rilevante rilevata.', { priority: 'low' }))

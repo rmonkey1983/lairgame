@@ -110,6 +110,32 @@ export type ScenarioTruth = {
 
 export type BrainMetrics = {
   liarExposure: number | null
+  roleExposure: {
+    liar: number | null
+    accomplice: number | null
+    scapegoat: number | null
+  }
+  theoryDiversity: number | null
+  participationBalance: number | null
+  trustCoverage: number | null
+  trustConcentration: number | null
+  suspicionCoverage: number | null
+  theoryShiftRate: number | null
+  averageTheoryChanges: number | null
+  liarConfidence: number | null
+  playerActivity: PlayerActivityMetric[]
+  tableMetrics: TableBrainMetrics[]
+}
+
+export type PlayerActivityMetric = {
+  playerId: string
+  eventCount: number
+  normalizedActivity: number
+}
+
+export type TableBrainMetrics = {
+  tableId: string
+  suspicionCoverage: number | null
   theoryDiversity: number | null
   participationBalance: number | null
 }

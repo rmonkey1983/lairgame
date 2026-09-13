@@ -34,6 +34,19 @@ export function buildBrainState(input: BrainInput): BrainState {
     socialEdges: input.socialEdges?.map((edge) => ({ ...edge })) ?? [],
     activeMissions: input.activeMissions?.map((mission) => ({ ...mission, allowedPhases: [...mission.allowedPhases], compatibleProfiles: [...mission.compatibleProfiles] })) ?? [],
     revealedInformation: input.revealedInformation?.map((information) => ({ ...information })) ?? [],
-    metrics: { liarExposure: null, theoryDiversity: null, participationBalance: null },
+    metrics: {
+      liarExposure: null,
+      roleExposure: { liar: null, accomplice: null, scapegoat: null },
+      theoryDiversity: null,
+      participationBalance: null,
+      trustCoverage: null,
+      trustConcentration: null,
+      suspicionCoverage: null,
+      theoryShiftRate: null,
+      averageTheoryChanges: null,
+      liarConfidence: null,
+      playerActivity: [],
+      tableMetrics: [],
+    },
   }
 }

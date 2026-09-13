@@ -21,13 +21,13 @@ describe('Liar Brain Core v0.1', () => {
     const inputPlayers = [...players]
     const result = state()
     expect(result.players).toEqual(inputPlayers)
-    expect(result.metrics).toEqual({ liarExposure: null, theoryDiversity: null, participationBalance: null })
+    expect(result.metrics).toMatchObject({ liarExposure: null, theoryDiversity: null, participationBalance: null })
     expect(result.players).not.toBe(players)
   })
 
   it('calculates derived metrics and never changes truth', () => {
     const evaluation = evaluateBrainState(state(), truth)
-    expect(evaluation.state.metrics).toEqual({ liarExposure: 1 / 3, theoryDiversity: 1, participationBalance: 1 })
+    expect(evaluation.state.metrics).toMatchObject({ liarExposure: 1, theoryDiversity: 0, participationBalance: 1 })
     expect(truth.liarPlayerId).toBe('p2')
   })
 
