@@ -1,7 +1,7 @@
 import { calculateTrustConcentration, calculateTrustCoverage, type TrustGraph } from './brain.trust'
 import type { BrainEventStore } from './brain.events'
 import type { SuspicionConfidence, SuspicionGraph } from './brain.suspicion'
-import type { BrainMetrics, BrainPlayer, BrainState, PlayerActivityMetric, ScenarioTruth, TableBrainMetrics } from './brain.types'
+import type { BrainMetrics, BrainPlayer, BrainState, MissionOutcomeRecord, MissionType, PlayerActivityMetric, ScenarioTruth, TableBrainMetrics } from './brain.types'
 
 const participationScore = { low: 0, medium: 0.5, high: 1 } as const
 const confidenceScore: Record<SuspicionConfidence, number> = { LOW: 0, MEDIUM: 0.5, HIGH: 1 }
@@ -11,6 +11,50 @@ export type BrainMetricsContext = {
   trustGraph?: TrustGraph
   suspicionGraph?: SuspicionGraph
   eventStore?: BrainEventStore
+  missionOutcomes?: MissionOutcomeRecord[]
+}
+
+export type MissionOutcomeMetrics = {
+  totalActivated: number
+  completed: number
+  failed: number
+  expired: number
+  completionRate: number | null
+  failureRate: number | null
+  expirationRate: number | null
+  acknowledgementRate: number | null
+  byMissionType: MissionTypeOutcomeMetrics[]
+  byPlayer: PlayerMissionOutcomeMetrics[]
+  byTable: TableMissionOutcomeMetrics[]
+}
+export type MissionTypeOutcomeMetrics = { missionType: MissionType; activated: number; completed: number; failed: number; expired: number; completionRate: number | null }
+export type PlayerMissionOutcomeMetrics = { playerId: string; activated: number; completed: number; failed: number; expired: number }
+export type TableMissionOutcomeMetrics = { tableId: string; activated: number; completed: number; failed: number; expired: number; completionRate: number | null }
+export type MissionInterventionTrace = { decisionId: string | null; directorProposalId: string | null; regiaProposalId: string | null; missionId: string; outcome: MissionOutcomeRecord['status'] }
+
+export function getMissionInterventionTrace(record: MissionOutcomeRecord): MissionInterventionTrace {
+  return { decisionId: record.decisionId ?? null, directorProposalId: record.directorProposalId ?? null, regiaProposalId: record.sourceProposalId ?? null, missionId: record.missionId, outcome: record.status }
+}
+
+function outcomeCounts(records: MissionOutcomeRecord[]) {
+  return records.reduce((counts, record) => ({ activated: counts.activated + 1, completed: counts.completed + (record.status === 'COMPLETED' ? 1 : 0), failed: counts.failed + (record.status === 'FAILED' ? 1 : 0), expired: counts.expired + (record.status === 'EXPIRED' ? 1 : 0) }), { activated: 0, completed: 0, failed: 0, expired: 0 })
+}
+
+export function calculateMissionOutcomeMetrics(records: readonly MissionOutcomeRecord[] = []): MissionOutcomeMetrics {
+  const ordered = [...records].sort((a, b) => a.missionId.localeCompare(b.missionId))
+  const total = outcomeCounts(ordered)
+  const terminal = total.completed + total.failed + total.expired
+  const grouped = <T>(values: T[], key: (value: T) => string) => [...new Set(values.map(key))].sort((a, b) => a.localeCompare(b))
+  const byMissionType = grouped(ordered, (record) => record.missionType).map((missionType) => {
+    const counts = outcomeCounts(ordered.filter((record) => record.missionType === missionType))
+    return { missionType: missionType as MissionType, ...counts, completionRate: ratio(counts.completed, counts.completed + counts.failed + counts.expired) }
+  })
+  const byPlayer = grouped(ordered, (record) => record.playerId).map((playerId) => ({ playerId, ...outcomeCounts(ordered.filter((record) => record.playerId === playerId)) }))
+  const byTable = grouped(ordered.filter((record) => record.tableId), (record) => record.tableId as string).map((tableId) => {
+    const counts = outcomeCounts(ordered.filter((record) => record.tableId === tableId))
+    return { tableId, ...counts, completionRate: ratio(counts.completed, counts.completed + counts.failed + counts.expired) }
+  })
+  return { totalActivated: total.activated, completed: total.completed, failed: total.failed, expired: total.expired, completionRate: ratio(total.completed, terminal), failureRate: ratio(total.failed, terminal), expirationRate: ratio(total.expired, terminal), acknowledgementRate: ratio(ordered.filter((record) => record.acknowledgedAt != null).length, total.activated), byMissionType, byPlayer, byTable }
 }
 
 function ratio(numerator: number, denominator: number): number | null {
@@ -174,6 +218,7 @@ export function calculateBrainMetrics(state: BrainState, truth?: ScenarioTruth, 
     liarConfidence: calculateLiarConfidence(state, truth, context.suspicionGraph),
     playerActivity: activity,
     tableMetrics: calculateTableMetrics(state, context),
+    ...(context.missionOutcomes ? { missionOutcomes: calculateMissionOutcomeMetrics(context.missionOutcomes) } : {}),
   }
 }
 

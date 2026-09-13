@@ -1154,6 +1154,21 @@ export type Database = {
           target_player_id: string
         }[]
       }
+      load_brain_mission_outcome_metrics: {
+        Args: { session_id: string }
+        Returns: {
+          acknowledged_at: string
+          activated_at: string
+          director_proposal_id: string
+          mission_id: string
+          mission_type: string
+          outcome_at: string
+          player_id: string
+          regia_proposal_id: string
+          status: string
+          table_id: string
+        }[]
+      }
       load_brain_missions: {
         Args: { session_id: string }
         Returns: {

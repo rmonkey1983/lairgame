@@ -153,17 +153,19 @@ export function createLiveBrainRealtime(client: Client, persistence: BrainPersis
     const context = await options.loadContext(sessionId)
     if (context.input.sessionId !== sessionId) throw new Error('BRAIN_SESSION_MISMATCH')
     const playerIds = context.input.players.map((player) => player.playerId)
-    const [events, trustGraph, suspicionGraph, persistedProposals] = await Promise.all([
+    const [events, trustGraph, suspicionGraph, persistedProposals, missionOutcomes] = await Promise.all([
       persistence.loadBrainEvents(sessionId),
       persistence.loadTrustState(sessionId, playerIds),
       persistence.loadSuspicionState(sessionId, playerIds),
       persistence.loadRegiaProposals(sessionId),
+      persistence.loadMissionOutcomes(sessionId),
     ])
     const metricsContext: BrainMetricsContext = {
       ...(context.metricsContext ?? {}),
       eventStore: events,
       trustGraph,
       suspicionGraph,
+      missionOutcomes,
     }
     const evaluation = runBrain({ ...context.input, socialEdges: socialEdges(trustGraph, suspicionGraph) }, context.scenarioTruth, metricsContext)
     const directorContext: LiveDirectorContext = {

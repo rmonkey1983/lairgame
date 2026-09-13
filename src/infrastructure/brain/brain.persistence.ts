@@ -4,7 +4,7 @@ import { validateRegiaProposal, approveRegiaProposal, rejectRegiaProposal, type 
 import { setSuspicion, validateSuspicionSelection, type SuspicionGraph, type SuspicionSelection } from '../../domain/brain/brain.suspicion'
 import { setTrust, validateTrustSelection, type TrustGraph, type TrustSelection, TRUST_LEVEL_STRENGTH } from '../../domain/brain/brain.trust'
 import type { LiveDirectorContext } from '../../domain/brain/brain.director'
-import type { GamePhase } from '../../domain/brain/brain.types'
+import type { GamePhase, MissionOutcomeRecord, MissionType } from '../../domain/brain/brain.types'
 import type { Database, Json } from '../../lib/supabase/database.types'
 
 type Client = SupabaseClient<Database>
@@ -13,6 +13,7 @@ type TrustRow = Database['public']['Functions']['load_brain_trust_state']['Retur
 type SuspicionRow = Database['public']['Functions']['load_brain_suspicion_state']['Returns'][number]
 type ProposalRow = Database['public']['Functions']['load_brain_regia_proposals']['Returns'][number]
 type ExecutionRow = { ok: boolean; proposal_id: string; execution_id: string | null; action: string | null; reason: string | null }
+type MissionOutcomeRow = Database['public']['Functions']['load_brain_mission_outcome_metrics']['Returns'][number]
 type AppendEventArgs = { session_id: string; event_id: string; event_type: string; phase: string; actor_player_id: string | null; target_player_id: string | null; payload: Json }
 
 const phaseFromDb: Record<string, GamePhase> = {
@@ -167,6 +168,7 @@ export interface BrainPersistence {
   loadSuspicionState(sessionId: string, playerIds: string[]): Promise<SuspicionGraph>
   setSuspicion(sessionId: string, selection: SuspicionSelection, graph?: SuspicionGraph): Promise<SuspicionGraph>
   loadRegiaProposals(sessionId: string): Promise<RegiaProposal[]>
+  loadMissionOutcomes(sessionId: string): Promise<MissionOutcomeRecord[]>
   saveRegiaProposal(sessionId: string, proposal: RegiaProposal, context?: LiveDirectorContext): Promise<RegiaProposal>
   approveRegiaProposal(sessionId: string, proposalId: string, context?: LiveDirectorContext): Promise<RegiaProposal>
   rejectRegiaProposal(sessionId: string, proposalId: string, context?: LiveDirectorContext): Promise<RegiaProposal>
@@ -207,6 +209,10 @@ export function createBrainPersistence(client: Client): BrainPersistence {
     async loadRegiaProposals(sessionId) {
       const rows = await rpc(client.rpc('load_brain_regia_proposals', { session_id: sessionId }), 'loadRegiaProposals')
       return (rows as ProposalRow[]).map(toRegiaProposal)
+    },
+    async loadMissionOutcomes(sessionId) {
+      const rows = await rpc(client.rpc('load_brain_mission_outcome_metrics', { session_id: sessionId }), 'loadMissionOutcomes')
+      return (rows as MissionOutcomeRow[]).map((row) => ({ missionId: row.mission_id, missionType: row.mission_type as MissionType, playerId: row.player_id, ...(row.table_id ? { tableId: row.table_id } : {}), status: row.status as MissionOutcomeRecord['status'], acknowledgedAt: row.acknowledged_at, activatedAt: row.activated_at, outcomeAt: row.outcome_at, sourceProposalId: row.regia_proposal_id, directorProposalId: row.director_proposal_id }))
     },
     async saveRegiaProposal(sessionId, proposal, context) {
       const validation = validateRegiaProposal(proposal, context)

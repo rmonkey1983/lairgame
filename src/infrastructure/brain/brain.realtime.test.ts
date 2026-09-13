@@ -29,6 +29,7 @@ function persistence(): BrainPersistence {
     loadSuspicionState: vi.fn(async () => createSuspicionGraph(['p1'])),
     setSuspicion: vi.fn(),
     loadRegiaProposals: vi.fn(async () => []),
+    loadMissionOutcomes: vi.fn(async () => []),
     saveRegiaProposal: vi.fn(),
     approveRegiaProposal: vi.fn(),
     rejectRegiaProposal: vi.fn(),

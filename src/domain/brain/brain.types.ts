@@ -120,6 +120,20 @@ export type MissionInstance = {
   exposureLevel: MissionExposureLevel
 }
 
+export type MissionOutcomeRecord = {
+  missionId: string
+  missionType: MissionType
+  playerId: string
+  tableId?: string
+  status: 'ACTIVE' | 'COMPLETED' | 'FAILED' | 'EXPIRED'
+  acknowledgedAt?: string | null
+  activatedAt?: string | null
+  outcomeAt?: string | null
+  sourceProposalId?: string | null
+  directorProposalId?: string | null
+  decisionId?: string | null
+}
+
 export type MissionViolation =
   | 'UNKNOWN_PLAYER'
   | 'UNKNOWN_TARGET'
@@ -182,6 +196,7 @@ export type BrainMetrics = {
   liarConfidence: number | null
   playerActivity: PlayerActivityMetric[]
   tableMetrics: TableBrainMetrics[]
+  missionOutcomes?: import('./brain.metrics').MissionOutcomeMetrics
 }
 
 export type PlayerActivityMetric = {
