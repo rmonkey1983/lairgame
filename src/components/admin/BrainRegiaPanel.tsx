@@ -1,0 +1,35 @@
+import type { BrainDecision, BrainMetrics } from '../../domain/brain/brain.types'
+import type { RegiaProposal } from '../../domain/brain/brain.regia'
+import type { DirectorProposal } from '../../domain/brain/brain.director'
+import type { LiveBrainRuntimeState } from '../../infrastructure/brain/useLiveBrain'
+
+type Props = LiveBrainRuntimeState & { onApprove: (proposalId: string) => Promise<void>; onReject: (proposalId: string) => Promise<void>; pendingProposalId?: string }
+const metricLabels: Array<[keyof BrainMetrics, string]> = [['liarExposure', 'Liar Exposure'], ['theoryDiversity', 'Theory Diversity'], ['suspicionCoverage', 'Suspicion Coverage'], ['trustCoverage', 'Trust Coverage'], ['trustConcentration', 'Trust Concentration'], ['participationBalance', 'Participation Balance']]
+const percent = (value: number | null) => value === null ? 'Dati insufficienti' : `${Math.round(value * 100)}%`
+const readableScope = (scope: DirectorProposal['scope']) => scope.type === 'SESSION' ? 'Sessione' : scope.type === 'TABLE' ? `Tavolo ${scope.tableId}` : `Player ${scope.playerId}`
+const readableEvidence = (decision: BrainDecision) => {
+  const entries = Object.entries(decision.evidence.metrics).filter(([, value]) => value !== null && value !== undefined)
+  return entries.map(([key, value]) => `${key}: ${percent(value as number)}`).join(' · ') || 'Dati insufficienti'
+}
+
+function Status({ status }: { status: LiveBrainRuntimeState['status'] }) {
+  return <p className="text-sm font-semibold">Stato Brain: <span className="text-primary">{status}</span></p>
+}
+
+export function BrainRegiaPanel({ status, snapshot, error, onApprove, onReject, pendingProposalId }: Props) {
+  return <section className="mt-10 border-t border-border pt-6" aria-labelledby="brain-regia-title">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm uppercase tracking-[0.16em] text-muted">LIAR BRAIN</p><h2 id="brain-regia-title" className="mt-2 text-2xl font-semibold text-primary">Controllo operativo</h2></div><Status status={status} /></div>
+    {error !== null && <p className="mt-3 text-sm text-danger">Brain unavailable</p>}
+    {!snapshot && !error && <p className="mt-4 text-sm text-muted">Preparazione snapshot Brain…</p>}
+    {snapshot && <div className="mt-6 grid gap-6">
+      <div><h3 className="font-semibold">Metriche principali</h3><dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{metricLabels.map(([key, label]) => <div key={key} className="border border-border p-3"><dt className="text-xs uppercase tracking-wide text-muted">{label}</dt><dd className="mt-1 text-lg font-semibold">{percent(snapshot.metrics[key] as number | null)}</dd></div>)}</dl></div>
+      <div><h3 className="font-semibold">Stato tavoli</h3><div className="mt-3 grid gap-3 sm:grid-cols-2">{snapshot.metrics.tableMetrics.map((table) => <article key={table.tableId} className="border border-border p-3"><h4 className="font-semibold">{table.tableId}</h4><p className="mt-2 text-sm text-muted">Sospetti {percent(table.suspicionCoverage)} · Teorie {percent(table.theoryDiversity)} · Partecipazione {percent(table.participationBalance)}</p></article>)}</div></div>
+      <div><h3 className="font-semibold">Diagnosi</h3>{snapshot.decisions.length ? <ul className="mt-3 grid gap-3">{snapshot.decisions.map((decision, index) => <li key={`${decision.type}-${index}`} className="border border-border p-3"><div className="flex flex-wrap justify-between gap-2"><strong>{decision.severity} · {decision.type}</strong><span className="text-sm text-muted">{readableScope(decision.scope)}</span></div><p className="mt-2 text-sm">{decision.reason}</p><p className="mt-2 text-xs text-muted">{readableEvidence(decision)}</p></li>)}</ul> : <p className="mt-3 text-sm text-muted">Nessuna diagnosi attiva.</p>}</div>
+      <div><h3 className="font-semibold">Director proposals</h3><ProposalList proposals={snapshot.directorProposals} /></div>
+      <div><h3 className="font-semibold">Regia queue</h3><ul className="mt-3 grid gap-3">{snapshot.regiaProposals.length ? snapshot.regiaProposals.map((proposal) => <RegiaRow key={proposal.id} proposal={proposal} onApprove={onApprove} onReject={onReject} pending={pendingProposalId === proposal.id} />) : <li className="text-sm text-muted">Nessuna proposta.</li>}</ul></div>
+    </div>}
+  </section>
+}
+
+function ProposalList({ proposals }: { proposals: DirectorProposal[] }) { return proposals.length ? <ul className="mt-3 grid gap-3">{proposals.map((proposal) => <li key={proposal.id} className="border border-border p-3"><div className="flex flex-wrap justify-between gap-2"><strong>{proposal.strategy}</strong><span className="text-sm text-muted">PROPOSTA · {proposal.priority}</span></div><p className="mt-1 text-sm text-muted">{readableScope(proposal.scope)} · decisione {proposal.sourceDecisionType}</p>{proposal.missionProposal && <p className="mt-2 text-xs text-muted">Missione proposta: {proposal.missionProposal.type} · Player {proposal.missionProposal.playerId}</p>}</li>)}</ul> : <p className="mt-3 text-sm text-muted">Nessuna proposta.</p> }
+function RegiaRow({ proposal, onApprove, onReject, pending }: { proposal: RegiaProposal; onApprove: Props['onApprove']; onReject: Props['onReject']; pending: boolean }) { return <li className="border border-border p-3"><div className="flex flex-wrap justify-between gap-2"><strong>{proposal.commandType}</strong><span className="text-sm text-muted">{proposal.controlMode} · {proposal.status}</span></div>{proposal.payload.commandType !== 'START_PHASE' && proposal.payload.commandType !== 'ADVANCE_PHASE' && 'missionProposal' in proposal.payload && proposal.payload.missionProposal && <p className="mt-2 text-xs text-muted">Missione proposta: {proposal.payload.missionProposal.type} · Player {proposal.payload.missionProposal.playerId}</p>}{proposal.status === 'PENDING' && proposal.controlMode === 'SUGGEST' && <div className="mt-3 flex flex-wrap gap-2"><button className="action" type="button" disabled={pending} onClick={() => void onApprove(proposal.id)}>Approva</button><button className="action action-secondary" type="button" disabled={pending} onClick={() => void onReject(proposal.id)}>Rifiuta</button></div>}</li> }

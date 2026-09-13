@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageShell } from "../../components/common/PageShell";
 import {
@@ -34,6 +34,11 @@ import {
   type StaffGamePressureRoute,
 } from "../../domain/session/staff.game.read";
 import { subscribeToStaffGameState } from "../../domain/session/staff.game.realtime";
+import { BrainRegiaPanel } from "../../components/admin/BrainRegiaPanel";
+import { createBrainPersistence } from "../../infrastructure/brain/brain.persistence";
+import { buildStaffBrainContext } from "../../infrastructure/brain/staff.brain.context";
+import { useLiveBrain } from "../../infrastructure/brain/useLiveBrain";
+import { staffSupabaseClient } from "../../lib/supabase/staff-client";
 
 const lifecycleLabels: Record<GameLifecycle, string> = {
   draft: "Bozza",
@@ -254,6 +259,25 @@ export default function AdminGamePage() {
     overview?.lifecycle === "live" &&
     overview.narrative_phase === "lobby" &&
     !rolesAssigned;
+  const brainPersistence = useMemo(() => staffSupabaseClient ? createBrainPersistence(staffSupabaseClient) : null, []);
+  const brainConfig = useMemo(() => overview && roster && brainPersistence && staffSupabaseClient ? {
+    client: staffSupabaseClient,
+    persistence: brainPersistence,
+    sessionId: overview.id,
+    loadContext: async () => buildStaffBrainContext(overview, roster),
+  } : null, [brainPersistence, overview, roster]);
+  const brain = useLiveBrain(brainConfig);
+  const [brainActionPending, setBrainActionPending] = useState<string | undefined>();
+  const approveBrainProposal = useCallback(async (proposalId: string) => {
+    if (!brainPersistence || !overview || brainActionPending) return;
+    setBrainActionPending(proposalId);
+    try { await brainPersistence.approveRegiaProposal(overview.id, proposalId); await brain.refresh(); } catch (cause) { setError(cause instanceof Error ? 'Impossibile approvare la proposta.' : 'Impossibile approvare la proposta.') } finally { setBrainActionPending(undefined) }
+  }, [brain, brainActionPending, brainPersistence, overview]);
+  const rejectBrainProposal = useCallback(async (proposalId: string) => {
+    if (!brainPersistence || !overview || brainActionPending) return;
+    setBrainActionPending(proposalId);
+    try { await brainPersistence.rejectRegiaProposal(overview.id, proposalId); await brain.refresh(); } catch (cause) { setError(cause instanceof Error ? 'Impossibile rifiutare la proposta.' : 'Impossibile rifiutare la proposta.') } finally { setBrainActionPending(undefined) }
+  }, [brain, brainActionPending, brainPersistence, overview]);
   return (
     <PageShell eyebrow="Control Room · game context" title="Regia">
       <div className="admin-game-content max-w-2xl">
@@ -601,6 +625,7 @@ export default function AdminGamePage() {
                   </button>
                 </section>
               )}
+              {brainConfig && <BrainRegiaPanel {...brain} onApprove={approveBrainProposal} onReject={rejectBrainProposal} pendingProposalId={brainActionPending} />}
             </>
           )}
         </div>
