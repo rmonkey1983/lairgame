@@ -78,6 +78,105 @@ export type Database = {
           },
         ]
       }
+      brain_missions: {
+        Row: {
+          activated_at: string
+          mission_id: string
+          mission_type: string
+          phase: string
+          player_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          target_player_id: string | null
+        }
+        Insert: {
+          activated_at?: string
+          mission_id: string
+          mission_type: string
+          phase: string
+          player_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          target_player_id?: string | null
+        }
+        Update: {
+          activated_at?: string
+          mission_id?: string
+          mission_type?: string
+          phase?: string
+          player_id?: string
+          session_id?: string
+          source_proposal_id?: string
+          status?: string
+          target_player_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_missions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brain_missions_session_id_source_proposal_id_fkey"
+            columns: ["session_id", "source_proposal_id"]
+            isOneToOne: false
+            referencedRelation: "brain_regia_proposals"
+            referencedColumns: ["session_id", "proposal_id"]
+          },
+          {
+            foreignKeyName: "brain_missions_target_player_id_fkey"
+            columns: ["target_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brain_proposal_executions: {
+        Row: {
+          action: string
+          created_at: string
+          execution_id: string
+          failure_reason: string | null
+          finished_at: string | null
+          proposal_id: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          execution_id: string
+          failure_reason?: string | null
+          finished_at?: string | null
+          proposal_id: string
+          session_id: string
+          status: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          execution_id?: string
+          failure_reason?: string | null
+          finished_at?: string | null
+          proposal_id?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_proposal_executions_session_id_proposal_id_fkey"
+            columns: ["session_id", "proposal_id"]
+            isOneToOne: true
+            referencedRelation: "brain_regia_proposals"
+            referencedColumns: ["session_id", "proposal_id"]
+          },
+        ]
+      }
       brain_regia_proposals: {
         Row: {
           command_type: string
@@ -863,6 +962,16 @@ export type Database = {
           player_count: number
         }[]
       }
+      execute_approved_regia_proposal: {
+        Args: { proposal_id: string; session_id: string }
+        Returns: {
+          action: string
+          execution_id: string
+          ok: boolean
+          proposal_id: string
+          reason: string
+        }[]
+      }
       get_my_join_state: {
         Args: { p_game_code: string }
         Returns: {
@@ -1029,6 +1138,20 @@ export type Database = {
           target_player_id: string
         }[]
       }
+      load_brain_missions: {
+        Args: { session_id: string }
+        Returns: {
+          activated_at: string
+          mission_id: string
+          mission_type: string
+          phase: string
+          player_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          target_player_id: string
+        }[]
+      }
       load_brain_regia_proposals: {
         Args: { session_id: string }
         Returns: {
@@ -1062,6 +1185,19 @@ export type Database = {
           phase: string
           session_id: string
           source_player_id: string
+          target_player_id: string
+        }[]
+      }
+      load_my_active_missions: {
+        Args: { session_id: string }
+        Returns: {
+          activated_at: string
+          mission_id: string
+          mission_type: string
+          phase: string
+          player_id: string
+          session_id: string
+          status: string
           target_player_id: string
         }[]
       }

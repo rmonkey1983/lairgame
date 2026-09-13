@@ -12,6 +12,7 @@ type EventRow = Database['public']['Functions']['load_brain_events']['Returns'][
 type TrustRow = Database['public']['Functions']['load_brain_trust_state']['Returns'][number]
 type SuspicionRow = Database['public']['Functions']['load_brain_suspicion_state']['Returns'][number]
 type ProposalRow = Database['public']['Functions']['load_brain_regia_proposals']['Returns'][number]
+type ExecutionRow = { ok: boolean; proposal_id: string; execution_id: string | null; action: string | null; reason: string | null }
 type AppendEventArgs = { session_id: string; event_id: string; event_type: string; phase: string; actor_player_id: string | null; target_player_id: string | null; payload: Json }
 
 const phaseFromDb: Record<string, GamePhase> = {
@@ -137,7 +138,7 @@ function proposalPayload(row: ProposalRow): RegiaProposal['payload'] {
 }
 
 export function toRegiaProposal(row: ProposalRow): RegiaProposal {
-  if (!['AUTO', 'SUGGEST', 'MANUAL'].includes(row.control_mode) || !['PENDING', 'APPROVED', 'REJECTED'].includes(row.status)) throw new BrainPersistenceError('INVALID_PERSISTED_PAYLOAD', `Invalid proposal state: ${row.proposal_id}`)
+  if (!['AUTO', 'SUGGEST', 'MANUAL'].includes(row.control_mode) || !['PENDING', 'APPROVED', 'REJECTED', 'EXECUTING', 'EXECUTED', 'EXECUTION_FAILED'].includes(row.status)) throw new BrainPersistenceError('INVALID_PERSISTED_PAYLOAD', `Invalid proposal state: ${row.proposal_id}`)
   const proposal = {
     id: row.proposal_id,
     controlMode: row.control_mode,
@@ -169,6 +170,7 @@ export interface BrainPersistence {
   saveRegiaProposal(sessionId: string, proposal: RegiaProposal, context?: LiveDirectorContext): Promise<RegiaProposal>
   approveRegiaProposal(sessionId: string, proposalId: string, context?: LiveDirectorContext): Promise<RegiaProposal>
   rejectRegiaProposal(sessionId: string, proposalId: string, context?: LiveDirectorContext): Promise<RegiaProposal>
+  executeApprovedProposal(sessionId: string, proposalId: string): Promise<ExecutionRow>
 }
 
 export function createBrainPersistence(client: Client): BrainPersistence {
@@ -227,6 +229,12 @@ export function createBrainPersistence(client: Client): BrainPersistence {
       if (!validation.valid) throw new BrainPersistenceError('DOMAIN_VALIDATION_FAILED', validation.violations.join(','))
       const row = (await rpc(client.rpc('reject_brain_regia_proposal', { session_id: sessionId, proposal_id: proposalId }), 'rejectRegiaProposal'))[0]
       return toRegiaProposal(row as ProposalRow)
+    },
+    async executeApprovedProposal(sessionId, proposalId) {
+      const row = (await rpc(client.rpc('execute_approved_regia_proposal', { session_id: sessionId, proposal_id: proposalId }), 'executeApprovedProposal'))[0] as unknown as ExecutionRow | undefined
+      if (!row) throw new BrainPersistenceError('DB_EMPTY_RESULT', 'executeApprovedProposal: empty result')
+      if (!row.ok) throw new BrainPersistenceError(row.reason ?? 'EXECUTION_FAILED', `executeApprovedProposal: ${row.reason ?? 'execution failed'}`)
+      return row
     },
   }
 }

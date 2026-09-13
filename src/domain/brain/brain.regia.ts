@@ -3,7 +3,7 @@ import { buildMissionProposal } from './brain.missions'
 import type { GamePhase, MissionInstance } from './brain.types'
 
 export type RegiaControlMode = 'AUTO' | 'SUGGEST' | 'MANUAL'
-export type RegiaProposalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type RegiaProposalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTING' | 'EXECUTED' | 'EXECUTION_FAILED'
 export type RegiaActor = 'MC'
 
 export type CriticalRegiaCommand =

@@ -32,6 +32,7 @@ function persistence(): BrainPersistence {
     saveRegiaProposal: vi.fn(),
     approveRegiaProposal: vi.fn(),
     rejectRegiaProposal: vi.fn(),
+    executeApprovedProposal: vi.fn(),
   }
 }
 

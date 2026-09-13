@@ -12,7 +12,7 @@ const snapshot = {
 
 describe('BrainRegiaPanel', () => {
   it('renders authoritative null metrics as insufficient data and exposes pending suggest actions', () => {
-    render(<BrainRegiaPanel status="LIVE" aiState={{ status: 'DISABLED' }} snapshot={{ ...snapshot, regiaProposals: [{ id: 'p1', controlMode: 'SUGGEST', status: 'PENDING', commandType: 'CHECK_TABLE', payload: { commandType: 'CHECK_TABLE', scope: { type: 'SESSION' } } }] }} error={null} onApprove={vi.fn()} onReject={vi.fn()} />)
+    render(<BrainRegiaPanel status="LIVE" aiState={{ status: 'DISABLED' }} snapshot={{ ...snapshot, regiaProposals: [{ id: 'p1', controlMode: 'SUGGEST', status: 'PENDING', commandType: 'CHECK_TABLE', payload: { commandType: 'CHECK_TABLE', scope: { type: 'SESSION' } } }] }} error={null} onApprove={vi.fn()} onReject={vi.fn()} onExecute={vi.fn()} />)
     expect(screen.getAllByText('Dati insufficienti')).toHaveLength(6)
     expect(screen.getByText(/Sospetti Dati insufficienti/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approva' })).toBeInTheDocument()

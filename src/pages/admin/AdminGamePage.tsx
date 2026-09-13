@@ -282,6 +282,11 @@ export default function AdminGamePage() {
     setBrainActionPending(proposalId);
     try { await brainPersistence.rejectRegiaProposal(overview.id, proposalId); await brain.refresh(); } catch (cause) { setError(cause instanceof Error ? 'Impossibile rifiutare la proposta.' : 'Impossibile rifiutare la proposta.') } finally { setBrainActionPending(undefined) }
   }, [brain, brainActionPending, brainPersistence, overview]);
+  const executeBrainProposal = useCallback(async (proposalId: string) => {
+    if (!brainPersistence || !overview || brainActionPending) return;
+    setBrainActionPending(proposalId);
+    try { await brainPersistence.executeApprovedProposal(overview.id, proposalId); await brain.refresh(); } catch (cause) { setError(cause instanceof Error && cause.message.includes('PHASE_CHANGED') ? 'La proposta non è più valida per la fase corrente.' : 'Impossibile eseguire la missione.') } finally { setBrainActionPending(undefined) }
+  }, [brain, brainActionPending, brainPersistence, overview]);
   return (
     <PageShell eyebrow="Control Room · game context" title="Regia">
       <div className="admin-game-content max-w-2xl">
@@ -629,7 +634,7 @@ export default function AdminGamePage() {
                   </button>
                 </section>
               )}
-              {brainConfig && <BrainRegiaPanel {...brain} onApprove={approveBrainProposal} onReject={rejectBrainProposal} pendingProposalId={brainActionPending} />}
+              {brainConfig && <BrainRegiaPanel {...brain} onApprove={approveBrainProposal} onReject={rejectBrainProposal} onExecute={executeBrainProposal} pendingProposalId={brainActionPending} />}
             </>
           )}
         </div>
