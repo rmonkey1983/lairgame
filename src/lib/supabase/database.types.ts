@@ -34,6 +34,170 @@ export type Database = {
   }
   public: {
     Tables: {
+      brain_events: {
+        Row: {
+          actor_player_id: string | null
+          created_at: string
+          event_id: string
+          event_type: string
+          payload: Json
+          phase: string
+          sequence: number
+          session_id: string
+          target_player_id: string | null
+        }
+        Insert: {
+          actor_player_id?: string | null
+          created_at?: string
+          event_id: string
+          event_type: string
+          payload: Json
+          phase: string
+          sequence: number
+          session_id: string
+          target_player_id?: string | null
+        }
+        Update: {
+          actor_player_id?: string | null
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          payload?: Json
+          phase?: string
+          sequence?: number
+          session_id?: string
+          target_player_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brain_regia_proposals: {
+        Row: {
+          command_type: string
+          control_mode: string
+          created_at: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          command_type: string
+          control_mode: string
+          created_at?: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          command_type?: string
+          control_mode?: string
+          created_at?: string
+          payload?: Json
+          proposal_id?: string
+          session_id?: string
+          source_proposal_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_regia_proposals_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brain_suspicion_state: {
+        Row: {
+          active: boolean
+          confidence: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          confidence: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          confidence?: string
+          phase?: string
+          session_id?: string
+          source_player_id?: string
+          target_player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_suspicion_state_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brain_trust_state: {
+        Row: {
+          active: boolean
+          level: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          level: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          level?: string
+          phase?: string
+          session_id?: string
+          source_player_id?: string
+          target_player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_trust_state_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -653,6 +817,42 @@ export type Database = {
           game_id: string
         }[]
       }
+      append_brain_event: {
+        Args: {
+          actor_player_id: string
+          event_id: string
+          event_type: string
+          payload: Json
+          phase: string
+          session_id: string
+          target_player_id: string
+        }
+        Returns: {
+          actor_player_id: string
+          created_at: string
+          event_id: string
+          event_type: string
+          payload: Json
+          phase: string
+          sequence: number
+          session_id: string
+          target_player_id: string
+        }[]
+      }
+      approve_brain_regia_proposal: {
+        Args: { proposal_id: string; session_id: string }
+        Returns: {
+          command_type: string
+          control_mode: string
+          created_at: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
       assign_game_roles: {
         Args: { command_id: string; game_code: string }
         Returns: {
@@ -815,6 +1015,70 @@ export type Database = {
           venue_name: string
         }[]
       }
+      load_brain_events: {
+        Args: { session_id: string }
+        Returns: {
+          actor_player_id: string
+          created_at: string
+          event_id: string
+          event_type: string
+          payload: Json
+          phase: string
+          sequence: number
+          session_id: string
+          target_player_id: string
+        }[]
+      }
+      load_brain_regia_proposals: {
+        Args: { session_id: string }
+        Returns: {
+          command_type: string
+          control_mode: string
+          created_at: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      load_brain_suspicion_state: {
+        Args: { session_id: string }
+        Returns: {
+          active: boolean
+          confidence: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+        }[]
+      }
+      load_brain_trust_state: {
+        Args: { session_id: string }
+        Returns: {
+          active: boolean
+          level: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+        }[]
+      }
+      reject_brain_regia_proposal: {
+        Args: { proposal_id: string; session_id: string }
+        Returns: {
+          command_type: string
+          control_mode: string
+          created_at: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
       reset_game_for_testing: {
         Args: { command_id: string; game_code: string }
         Returns: {
@@ -824,6 +1088,62 @@ export type Database = {
           lifecycle: string
           narrative_phase: string
           reset_at: string
+        }[]
+      }
+      save_brain_regia_proposal: {
+        Args: {
+          command_type: string
+          control_mode: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+        }
+        Returns: {
+          command_type: string
+          control_mode: string
+          created_at: string
+          payload: Json
+          proposal_id: string
+          session_id: string
+          source_proposal_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      set_brain_suspicion: {
+        Args: {
+          confidence: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+        }
+        Returns: {
+          active: boolean
+          confidence: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+        }[]
+      }
+      set_brain_trust: {
+        Args: {
+          level: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
+        }
+        Returns: {
+          active: boolean
+          level: string
+          phase: string
+          session_id: string
+          source_player_id: string
+          target_player_id: string
         }[]
       }
       transition_game_lifecycle: {
@@ -876,12 +1196,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -905,11 +1225,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -930,11 +1250,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -955,11 +1275,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -972,11 +1292,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
