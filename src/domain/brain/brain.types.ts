@@ -116,7 +116,7 @@ export type MissionInstance = {
   playerId: string
   targetPlayerId?: string
   phase: GamePhase
-  status: 'PROPOSED' | 'ACTIVE'
+  status: 'PROPOSED' | 'ACTIVE' | 'COMPLETED' | 'FAILED' | 'EXPIRED'
   exposureLevel: MissionExposureLevel
 }
 

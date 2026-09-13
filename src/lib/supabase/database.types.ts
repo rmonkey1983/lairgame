@@ -80,9 +80,12 @@ export type Database = {
       }
       brain_missions: {
         Row: {
+          acknowledged_at: string | null
           activated_at: string
           mission_id: string
           mission_type: string
+          outcome_at: string | null
+          outcome_reason: string | null
           phase: string
           player_id: string
           session_id: string
@@ -91,9 +94,12 @@ export type Database = {
           target_player_id: string | null
         }
         Insert: {
+          acknowledged_at?: string | null
           activated_at?: string
           mission_id: string
           mission_type: string
+          outcome_at?: string | null
+          outcome_reason?: string | null
           phase: string
           player_id: string
           session_id: string
@@ -102,9 +108,12 @@ export type Database = {
           target_player_id?: string | null
         }
         Update: {
+          acknowledged_at?: string | null
           activated_at?: string
           mission_id?: string
           mission_type?: string
+          outcome_at?: string | null
+          outcome_reason?: string | null
           phase?: string
           player_id?: string
           session_id?: string
@@ -909,6 +918,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_my_mission: {
+        Args: { game_code: string; mission_id: string }
+        Returns: {
+          acknowledged_at: string
+          mission_id: string
+        }[]
+      }
       acknowledge_my_role: {
         Args: { game_code: string }
         Returns: {
@@ -1188,6 +1204,14 @@ export type Database = {
           target_player_id: string
         }[]
       }
+      load_incompatible_brain_missions: {
+        Args: { game_code: string }
+        Returns: {
+          current_phase: string
+          mission_id: string
+          phase: string
+        }[]
+      }
       load_my_active_missions: {
         Args: { session_id: string }
         Returns: {
@@ -1204,9 +1228,24 @@ export type Database = {
       load_my_player_missions: {
         Args: { game_code: string }
         Returns: {
+          acknowledged_at: string
           mission_id: string
           mission_type: string
           phase: string
+          status: string
+          target_player_id: string
+        }[]
+      }
+      load_staff_mission_outcomes: {
+        Args: { game_code: string }
+        Returns: {
+          acknowledged_at: string
+          mission_id: string
+          mission_type: string
+          outcome_at: string
+          outcome_reason: string
+          phase: string
+          player_id: string
           status: string
           target_player_id: string
         }[]
@@ -1256,6 +1295,25 @@ export type Database = {
           source_proposal_id: string
           status: string
           updated_at: string
+        }[]
+      }
+      set_brain_mission_outcome: {
+        Args: {
+          command_id?: string
+          game_code: string
+          mission_id: string
+          outcome: string
+          reason_code?: string
+        }
+        Returns: {
+          acknowledged_at: string
+          mission_id: string
+          mission_type: string
+          outcome_at: string
+          outcome_reason: string
+          phase: string
+          status: string
+          target_player_id: string
         }[]
       }
       set_brain_suspicion: {
@@ -1333,6 +1391,7 @@ export type Database = {
     }
   }
 }
+
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

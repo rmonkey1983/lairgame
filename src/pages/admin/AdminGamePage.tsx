@@ -40,6 +40,7 @@ import { buildStaffBrainContext } from "../../infrastructure/brain/staff.brain.c
 import { useLiveBrain } from "../../infrastructure/brain/useLiveBrain";
 import { createConfiguredProductionBrainAIProvider } from "../../infrastructure/brain/brain.ai.provider";
 import { staffSupabaseClient } from "../../lib/supabase/staff-client";
+import { getStaffMissionOutcomes, setStaffMissionOutcome, type MissionOutcome, type StaffGameMission } from "../../domain/session/staff.game.missions";
 
 const lifecycleLabels: Record<GameLifecycle, string> = {
   draft: "Bozza",
@@ -93,6 +94,7 @@ export default function AdminGamePage() {
   const [clues, setClues] = useState<StaffGameClue[] | null>(null);
   const [comparisons, setComparisons] = useState<StaffGameComparison[] | null>(null);
   const [pressureRoutes, setPressureRoutes] = useState<StaffGamePressureRoute[] | null>(null);
+  const [missions, setMissions] = useState<StaffGameMission[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandPending, setCommandPending] = useState(false);
@@ -143,6 +145,13 @@ export default function AdminGamePage() {
     else setError(r.error.userMessage);
     return r;
   }, [gameCode]);
+  const loadMissions = useCallback(async () => {
+    if (!gameCode) return null;
+    const r = await getStaffMissionOutcomes(gameCode);
+    if (r.ok) setMissions(r.value);
+    else setError(r.error.userMessage);
+    return r;
+  }, [gameCode]);
   useEffect(() => {
     if (!gameCode) return;
     let active = true;
@@ -155,16 +164,16 @@ export default function AdminGamePage() {
       }
       setOverview(r.value);
       setError(null);
-      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
+      void Promise.all([loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadMissions()]);
       unsubscribe = subscribeToStaffGameState(r.value.id, () => {
-        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes()]);
+        void Promise.all([loadOverview(), loadRoster(), loadRoles(), loadClues(), loadComparisons(), loadPressureRoutes(), loadMissions()]);
       });
     });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes]);
+  }, [gameCode, loadOverview, loadRoster, loadRoles, loadClues, loadComparisons, loadPressureRoutes, loadMissions]);
   async function handleTransition(target: GameLifecycle) {
     if (!overview || !gameCode || commandPending) return;
     if (
@@ -235,6 +244,13 @@ export default function AdminGamePage() {
       setNotice("Partita resettata.");
     } else setError(r.error.userMessage);
     setResetPending(false);
+  }
+  async function handleMissionOutcome(missionId: string, outcome: MissionOutcome) {
+    if (!gameCode) return;
+    setError(null);
+    const r = await setStaffMissionOutcome(gameCode, missionId, outcome);
+    if (r.ok) { await loadMissions(); setNotice("Esito missione registrato."); }
+    else setError(r.error.userMessage);
   }
   const allowed = overview
     ? getAllowedLifecycleTransitions(overview.lifecycle as GameLifecycle).filter((target) => target !== "completed" || overview.narrative_phase === "reveal")
@@ -634,6 +650,11 @@ export default function AdminGamePage() {
                   </button>
                 </section>
               )}
+              {missions && missions.length > 0 && <section className="mt-10 border-t border-border pt-6" aria-labelledby="mission-outcomes-title">
+                <p className="text-sm uppercase tracking-[0.16em] text-muted">Missioni</p>
+                <h2 id="mission-outcomes-title" className="mt-2 text-2xl font-semibold text-primary">Esiti operativi</h2>
+                <ul className="mt-4 grid gap-3">{missions.map((mission) => <li key={mission.mission_id} className="border border-border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{mission.mission_type}</strong><span className="text-sm text-muted">{mission.status}</span></div><p className="mt-1 text-sm text-muted">Player {mission.player_id}{mission.target_player_id ? ` · obiettivo ${mission.target_player_id}` : ''} · fase {mission.phase}</p><p className="mt-2 text-sm">{mission.acknowledged_at ? 'Missione riconosciuta dal Player.' : 'In attesa di riconoscimento.'}</p>{mission.status === 'ACTIVE' && <div className="mt-3 flex flex-wrap gap-2"><button className="action" type="button" onClick={() => void handleMissionOutcome(mission.mission_id, 'COMPLETED')}>Completa</button><button className="action action-secondary" type="button" onClick={() => void handleMissionOutcome(mission.mission_id, 'FAILED')}>Fallita</button><button className="action action-secondary" type="button" onClick={() => void handleMissionOutcome(mission.mission_id, 'EXPIRED')}>Scaduta</button></div>}</li>)}</ul>
+              </section>}
               {brainConfig && <BrainRegiaPanel {...brain} onApprove={approveBrainProposal} onReject={rejectBrainProposal} onExecute={executeBrainProposal} pendingProposalId={brainActionPending} />}
             </>
           )}

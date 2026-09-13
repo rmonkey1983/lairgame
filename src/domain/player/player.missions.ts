@@ -3,7 +3,7 @@ import { logger } from '../../lib/logging/logger'
 import { playerSupabaseClient } from '../../lib/supabase/player-client'
 
 export type PlayerMissionType = 'OBSERVE_PLAYER' | 'VERIFY_STATEMENT' | 'GAIN_TRUST' | 'SHARE_INFORMATION' | 'WITHHOLD_INFORMATION' | 'QUESTION_PLAYER' | 'PROTECT_PLAYER' | 'INFLUENCE_PLAYER' | 'FORM_ALLIANCE' | 'CHANGE_THEORY'
-export type PlayerActiveMission = { missionId: string; type: PlayerMissionType; targetPlayerId?: string; phase: string; status: 'ACTIVE' }
+export type PlayerActiveMission = { missionId: string; type: PlayerMissionType; targetPlayerId?: string; phase: string; status: 'ACTIVE'; acknowledgedAt?: string }
 
 const instructions: Record<PlayerMissionType, (target?: string) => string> = {
   OBSERVE_PLAYER: (target) => `Osserva ${target ?? 'il gruppo'} durante questa fase.`,
@@ -37,5 +37,13 @@ export async function loadMyActiveMissions(gameCode: string): Promise<Result<Pla
   if (!session.data.session || session.data.session.user.is_anonymous !== true) return mapError({ message: 'AUTH_REQUIRED' })
   const { data, error } = await playerSupabaseClient.rpc('load_my_player_missions', { game_code: gameCode })
   if (error) { logger.warn('Player missions failed', { cause: error }); return mapError(error) }
-  return ok((data ?? []).map((row) => ({ missionId: row.mission_id, type: row.mission_type as PlayerMissionType, ...(row.target_player_id ? { targetPlayerId: row.target_player_id } : {}), phase: row.phase, status: 'ACTIVE' as const })))
+  return ok((data ?? []).map((row) => ({ missionId: row.mission_id, type: row.mission_type as PlayerMissionType, ...(row.target_player_id ? { targetPlayerId: row.target_player_id } : {}), phase: row.phase, status: 'ACTIVE' as const, ...(row.acknowledged_at ? { acknowledgedAt: row.acknowledged_at } : {}) })))
+}
+
+export async function acknowledgeMyMission(gameCode: string, missionId: string): Promise<Result<{ missionId: string; acknowledgedAt: string }>> {
+  if (!playerSupabaseClient) return fail(appError('TEMPORARY_UNAVAILABLE', 'Servizio di gioco non configurato.'))
+  const { data, error } = await playerSupabaseClient.rpc('acknowledge_my_mission', { game_code: gameCode, mission_id: missionId })
+  if (error) return mapError(error)
+  const row = data?.[0]
+  return row ? ok({ missionId: row.mission_id, acknowledgedAt: row.acknowledged_at }) : fail(appError('UNKNOWN', 'Impossibile confermare la missione.'))
 }
