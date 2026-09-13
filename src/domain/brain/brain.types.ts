@@ -73,7 +73,14 @@ export type MissionType =
   | 'PROTECT_PLAYER'
   | 'INFLUENCE_PLAYER'
   | 'FORM_ALLIANCE'
+  | 'BREAK_ALLIANCE'
   | 'CHANGE_THEORY'
+
+export type MissionCategory = 'OBSERVATION' | 'TRUST' | 'INFORMATION' | 'INFLUENCE' | 'ALLIANCE' | 'THEORY'
+export type MissionExposureLevel = ExposureLevel
+export type MissionTargetRequirement = 'NONE' | 'PLAYER' | 'TRUSTED_PLAYER' | 'SUSPECTED_PLAYER'
+export type MissionAvailability = 'AVAILABLE' | 'BLOCKED_BY_MISSING_CONTEXT'
+export type MissionConstraint = 'NO_FORCED_EXPOSURE' | 'SOCIAL_FIRST' | 'REQUIRES_TRUST_GRAPH' | 'REQUIRES_SUSPICION_GRAPH'
 
 export type MissionTemplate = {
   type: MissionType
@@ -82,6 +89,11 @@ export type MissionTemplate = {
   exposureLevel: ExposureLevel
   requiresTarget: boolean
   requiresPublicExposure?: boolean
+  category?: MissionCategory
+  targetRequirement?: MissionTargetRequirement
+  socialFirst?: boolean
+  constraints?: MissionConstraint[]
+  availability?: MissionAvailability
 }
 
 export type Mission = MissionTemplate & {
@@ -89,6 +101,51 @@ export type Mission = MissionTemplate & {
   assignedPlayerId: string
   targetPlayerId?: string
 }
+
+export type MissionDefinition = MissionTemplate & {
+  category: MissionCategory
+  targetRequirement: MissionTargetRequirement
+  socialFirst: boolean
+  constraints: MissionConstraint[]
+  availability: MissionAvailability
+}
+
+export type MissionInstance = {
+  missionId: string
+  type: MissionType
+  playerId: string
+  targetPlayerId?: string
+  phase: GamePhase
+  status: 'PROPOSED'
+  exposureLevel: MissionExposureLevel
+}
+
+export type MissionViolation =
+  | 'UNKNOWN_PLAYER'
+  | 'UNKNOWN_TARGET'
+  | 'SELF_TARGET'
+  | 'MISSION_NOT_ALLOWED_IN_PHASE'
+  | 'PLAYER_EXPOSURE_TOO_LOW'
+  | 'MISSION_NOT_COMPATIBLE_WITH_PROFILE'
+  | 'TARGET_REQUIRED'
+  | 'TARGET_NOT_ALLOWED'
+  | 'TARGET_NOT_TRUSTED'
+  | 'TARGET_NOT_SUSPECTED'
+  | 'MISSING_REQUIRED_CONTEXT'
+  | 'UNSUPPORTED_RUNTIME_DEPENDENCY'
+
+export type MissionCompatibilityResult = { compatible: boolean; violations: MissionViolation[] }
+
+export type MissionContext = {
+  phase: GamePhase
+  players: PlayerGameProfile[]
+  trustGraph?: import('./brain.trust').TrustGraph
+  suspicionGraph?: import('./brain.suspicion').SuspicionGraph
+}
+
+export type MissionProposalResult =
+  | { valid: true; proposal: MissionInstance }
+  | { valid: false; violations: MissionViolation[] }
 
 export type Information = {
   id: string
