@@ -51,13 +51,25 @@ export type BrainAIProvider = {
   evaluate(request: BrainAIRequest): Promise<unknown>
 }
 
+export type BrainAIProviderFailureCode = 'RATE_LIMIT' | 'HTTP_ERROR' | 'NETWORK_ERROR' | 'MALFORMED_RESPONSE' | 'MISSING_CONFIGURATION'
+
+export class BrainAIProviderError extends Error {
+  readonly code: BrainAIProviderFailureCode
+
+  constructor(code: BrainAIProviderFailureCode) {
+    super(code)
+    this.name = 'BrainAIProviderError'
+    this.code = code
+  }
+}
+
 export type BrainAIEvaluationResult =
   | { status: 'USED'; response: ValidatedBrainAIResponse }
   | { status: 'SKIPPED'; reason: BrainAISkipReason }
   | { status: 'FALLBACK'; reason: BrainAIFallbackReason; response: ValidatedBrainAIResponse }
 
 export type BrainAISkipReason = 'AI_DISABLED' | 'NO_PROVIDER' | 'NO_ALLOWED_PROPOSALS'
-export type BrainAIFallbackReason = 'PROVIDER_FAILED' | 'TIMEOUT' | 'INVALID_RESPONSE' | 'VALIDATION_FAILED'
+export type BrainAIFallbackReason = 'PROVIDER_FAILED' | 'RATE_LIMIT' | 'TIMEOUT' | 'INVALID_RESPONSE' | 'VALIDATION_FAILED'
 
 const decisionTypes = new Set<BrainDecisionType>([
   'NO_ACTION', 'LOW_ENGAGEMENT', 'HIGH_LIAR_EXPOSURE', 'LOW_LIAR_EXPOSURE',
@@ -186,7 +198,12 @@ export async function evaluateWithBrainAI(request: BrainAIRequest, provider: Bra
     if (!validation.valid) return { status: 'FALLBACK', reason: 'VALIDATION_FAILED', response: fallbackResponse(request) }
     return { status: 'USED', response: validation.response }
   } catch (error) {
-    return { status: 'FALLBACK', reason: error instanceof Error && error.message === 'BRAIN_AI_TIMEOUT' ? 'TIMEOUT' : 'PROVIDER_FAILED', response: fallbackResponse(request) }
+    const reason: BrainAIFallbackReason = error instanceof Error && error.message === 'BRAIN_AI_TIMEOUT'
+      ? 'TIMEOUT'
+      : error instanceof BrainAIProviderError && error.code === 'RATE_LIMIT'
+        ? 'RATE_LIMIT'
+        : 'PROVIDER_FAILED'
+    return { status: 'FALLBACK', reason, response: fallbackResponse(request) }
   }
 }
 
